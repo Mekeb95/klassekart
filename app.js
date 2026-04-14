@@ -18,6 +18,7 @@ let state = {
   gridCols:            8,
   gridRows:            6,
   blackboardPosition:  'top',
+  hasRandomized:       false,
   exclusions:          [],   // [{a: 'Name1', b: 'Name2'}]
   teacherDesk:         null, // {col, row} or null
   desks:               [],   // [{id, col, row, groupId, studentName, locked, size}]
@@ -154,9 +155,36 @@ function checkExclusions(desks) {
   return true;
 }
 
+// ── Auto layout ───────────────────────────────────────────
+// Computes a balanced gridCols/gridRows for the given desk count.
+// Desk rows are placed at odd rows (1, 3, 5…), leaving empty rows between.
+function computeAutoLayout(deskCount, groupSize) {
+  const totalGroups = Math.ceil(deskCount / Math.max(1, groupSize));
+  // Aim for a layout that's slightly wider than tall
+  let gpr = Math.max(2, Math.min(6, Math.round(Math.sqrt(totalGroups))));
+
+  const gridCols = groupSize <= 1 ? gpr : gpr * (groupSize + 1) - 1;
+  const groupRows = Math.ceil(totalGroups / gpr);
+  // Each desk-row occupies 1 row; the gap after it occupies 1 row → ×2 total
+  const gridRows = groupRows * 2;
+
+  return { gridCols: Math.max(2, gridCols), gridRows: Math.max(3, gridRows) };
+}
+
 // ── Randomize ─────────────────────────────────────────────
 function randomizeSeating() {
   pushUndo();
+
+  // First-time randomization: auto-compute an optimal grid layout
+  if (!state.hasRandomized) {
+    const auto = computeAutoLayout(state.deskCount, state.groupSize);
+    state.gridCols = auto.gridCols;
+    state.gridRows = auto.gridRows;
+    document.getElementById('grid-cols').value = state.gridCols;
+    document.getElementById('grid-rows').value = state.gridRows;
+    rebuildDesks(false); // fresh positions using the new layout
+    state.hasRandomized = true;
+  }
 
   const locked        = state.desks.filter(d => d.locked);
   const unlocked      = state.desks.filter(d => !d.locked);
@@ -761,13 +789,33 @@ function toggleTeacherDesk() {
     state.teacherDesk = null;
     document.getElementById('btn-teacher-desk').textContent = 'Legg til lærerpult';
   } else {
-    // Place at center-bottom, expand grid if needed
-    const centerCol = Math.ceil(state.gridCols / 2);
-    const targetRow = state.gridRows + 2;
-    state.gridRows = targetRow;
-    document.getElementById('grid-rows').value = state.gridRows;
-    state.teacherDesk = { col: centerCol, row: state.gridRows - 1 };
+    const pos        = state.blackboardPosition || 'top';
+    const centerCol  = Math.ceil(state.gridCols / 2);
+    const centerRow  = Math.ceil(state.gridRows / 2);
+
+    if (pos === 'top') {
+      // Shift all student desks down 2 rows, add teacher at row 1 (row 2 = empty gap)
+      state.desks.forEach(d => { d.row += 2; });
+      state.gridRows += 2;
+      state.teacherDesk = { col: centerCol, row: 1 };
+    } else if (pos === 'bottom') {
+      // Expand grid down, teacher at last row (second-to-last = empty gap)
+      state.gridRows += 2;
+      state.teacherDesk = { col: centerCol, row: state.gridRows };
+    } else if (pos === 'left') {
+      // Shift all student desks right 2 cols, add teacher at col 1 (col 2 = empty gap)
+      state.desks.forEach(d => { d.col += 2; });
+      state.gridCols += 2;
+      state.teacherDesk = { col: 1, row: centerRow };
+    } else { // right
+      // Expand grid right, teacher at last col (second-to-last = empty gap)
+      state.gridCols += 2;
+      state.teacherDesk = { col: state.gridCols, row: centerRow };
+    }
+
     document.getElementById('btn-teacher-desk').textContent = 'Fjern lærerpult';
+    document.getElementById('grid-cols').value = state.gridCols;
+    document.getElementById('grid-rows').value = state.gridRows;
   }
   renderClassroom();
 }
@@ -902,6 +950,8 @@ function mergeStateDefaults(parsed) {
   if (!parsed.exclusions)         parsed.exclusions         = [];
   if (!parsed.blackboardPosition) parsed.blackboardPosition = 'top';
   if (parsed.teacherDesk === undefined) parsed.teacherDesk  = null;
+  // Loaded states already have a layout — don't auto-layout again
+  parsed.hasRandomized = true;
   if (parsed.desks) {
     parsed.desks.forEach(d => {
       if (d.locked === undefined) d.locked = false;
