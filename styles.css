@@ -237,6 +237,23 @@ body {
 }
 #overflow-list { font-size: 11px; color: #999; margin-top: 3px; word-break: break-word; }
 
+.btn-fix-desks {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  padding: 6px 10px;
+  background: #7a5f00;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-fix-desks:hover { background: #5a4500; }
+
 .sidebar-footer {
   margin-top: auto;
   padding-top: 16px;

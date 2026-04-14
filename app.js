@@ -222,18 +222,48 @@ function renderMismatchWarning() {
   const dc = state.deskCount;
 
   if (sc > dc) {
-    w.className    = 'show';
-    w.textContent  = `${sc - dc} elev${sc - dc > 1 ? 'er' : ''} mangler pult`;
+    const missing = sc - dc;
+    w.className = 'show';
+    w.innerHTML = '';
+
+    const txt = document.createElement('span');
+    txt.textContent = `${missing} elev${missing > 1 ? 'er' : ''} mangler pult`;
+
+    const btn = document.createElement('button');
+    btn.className   = 'btn-fix-desks';
+    btn.textContent = `+ Legg til ${missing} pult${missing > 1 ? 'er' : ''}`;
+    btn.addEventListener('click', fixMissingDesks);
+
+    w.appendChild(txt);
+    w.appendChild(btn);
     ol.textContent = 'Uten pult: ' + state.students.slice(dc).join(', ');
   } else if (sc > 0 && sc < dc) {
-    w.className    = 'show';
-    w.textContent  = `${dc - sc} pult${dc - sc > 1 ? 'er' : ''} vil stå tom${dc - sc > 1 ? 'me' : ''}`;
+    w.className   = 'show';
+    w.innerHTML   = '';
+    w.textContent = `${dc - sc} pult${dc - sc > 1 ? 'er' : ''} vil stå tom${dc - sc > 1 ? 'me' : ''}`;
     ol.textContent = '';
   } else {
     w.className    = '';
-    w.textContent  = '';
+    w.innerHTML    = '';
     ol.textContent = '';
   }
+}
+
+function fixMissingDesks() {
+  pushUndo();
+  const overflow = state.students.slice(state.deskCount);
+  state.deskCount = state.students.length;
+  document.getElementById('desk-count').value = state.deskCount;
+  rebuildDesks(true);
+
+  // Assign overflow students to the newly created empty desks
+  const emptyDesks = state.desks.filter(d => !d.studentName && !d.locked);
+  overflow.forEach((name, i) => {
+    if (emptyDesks[i]) emptyDesks[i].studentName = name;
+  });
+
+  renderAll();
+  showToast(`${overflow.length} pult${overflow.length > 1 ? 'er' : ''} lagt til`);
 }
 
 function renderGroupBackgrounds(container) {
