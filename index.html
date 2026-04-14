@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Klassekart</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Custom context menu (right-click on desk) -->
+  <div id="context-menu">
+    <div class="ctx-item" id="ctx-lock">🔒 Lås pult</div>
+    <div class="ctx-item" id="ctx-edit">✏️ Rediger navn</div>
+    <div class="ctx-item" id="ctx-size">↔️ Gjør bred</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item ctx-danger" id="ctx-remove-student">🗑️ Fjern elev</div>
+    <div class="ctx-item ctx-danger" id="ctx-remove-teacher">🗑️ Fjern lærerpult</div>
+  </div>
+
+  <aside id="sidebar">
+    <div id="sidebar-header"><h1>Klassekart</h1></div>
+
+    <!-- Klassenavn -->
+    <div class="section">
+      <label class="section-label" for="class-name">Klassenavn</label>
+      <input type="text" id="class-name" placeholder="f.eks. 7A">
+    </div>
+
+    <!-- Elever + Elevlister -->
+    <div class="section">
+      <label class="section-label">Elever <span id="student-count">(0)</span></label>
+      <textarea id="students-textarea"
+        placeholder="Skriv ett navn per linje&#10;&#10;Ola Nordmann&#10;Kari Hansen&#10;..."></textarea>
+      <div class="sub-row mt-6">
+        <input type="text" id="list-name-input" class="input-sm" placeholder="Listenavn...">
+        <button id="btn-save-list" class="btn-sm">Lagre liste</button>
+      </div>
+      <div class="sub-row mt-4">
+        <select id="saved-lists" class="select-sm">
+          <option value="">— Velg elevliste —</option>
+        </select>
+        <button id="btn-load-list" class="btn-sm">Last</button>
+        <button id="btn-delete-list" class="btn-sm btn-sm-danger">✕</button>
+      </div>
+    </div>
+
+    <!-- Utelukk naboskap -->
+    <div class="section">
+      <label class="section-label">Utelukk naboskap</label>
+      <datalist id="students-datalist"></datalist>
+      <div class="sub-row">
+        <input type="text" id="excl-a" list="students-datalist" class="input-sm" placeholder="Elev A">
+        <span class="excl-og">og</span>
+        <input type="text" id="excl-b" list="students-datalist" class="input-sm" placeholder="Elev B">
+        <button id="btn-add-excl" class="btn-sm">+</button>
+      </div>
+      <ul id="exclusion-list"></ul>
+    </div>
+
+    <!-- Oppsett -->
+    <div class="section">
+      <label class="section-label">Oppsett</label>
+      <div class="input-row">
+        <span class="input-label">Antall pulter</span>
+        <input type="number" id="desk-count" min="1" max="60" value="24">
+      </div>
+      <div class="input-row">
+        <span class="input-label">Gruppestørrelse</span>
+        <select id="group-size">
+          <option value="1">Enkeltpulter</option>
+          <option value="2" selected>2 og 2</option>
+          <option value="3">3 og 3</option>
+          <option value="4">4 og 4</option>
+        </select>
+      </div>
+      <div class="input-row">
+        <span class="input-label">Kolonner</span>
+        <input type="number" id="grid-cols" min="1" max="20" value="8">
+      </div>
+      <div class="input-row">
+        <span class="input-label">Rader</span>
+        <input type="number" id="grid-rows" min="1" max="20" value="6">
+      </div>
+      <div class="input-row">
+        <span class="input-label">Tavleposisjon</span>
+        <select id="blackboard-position">
+          <option value="top" selected>Øverst</option>
+          <option value="bottom">Nederst</option>
+          <option value="left">Venstre side</option>
+          <option value="right">Høyre side</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Lærerpult -->
+    <div class="section">
+      <button id="btn-teacher-desk" class="btn-secondary">Legg til lærerpult</button>
+    </div>
+
+    <!-- Handlinger -->
+    <div class="section">
+      <button id="btn-randomize" class="btn-primary">🔀 Randomiser</button>
+      <button id="btn-undo" class="btn-secondary mt-6">↩ Angre</button>
+    </div>
+
+    <!-- Lagrede kart -->
+    <div class="section">
+      <label class="section-label">Lagrede kart</label>
+      <select id="saved-maps"><option value="">— Velg lagret kart —</option></select>
+      <div class="btn-row mt-6">
+        <button id="btn-save" class="btn-secondary">Lagre</button>
+        <button id="btn-load" class="btn-secondary">Last inn</button>
+        <button id="btn-delete" class="btn-secondary btn-danger">Slett</button>
+      </div>
+    </div>
+
+    <!-- Eksport / Import -->
+    <div class="section">
+      <label class="section-label">Eksport / Import</label>
+      <div class="btn-row">
+        <button id="btn-export" class="btn-secondary">JSON</button>
+        <button id="btn-export-png" class="btn-secondary">PNG</button>
+        <button id="btn-import" class="btn-secondary">Importer</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none">
+    </div>
+
+    <div id="mismatch-warning"></div>
+    <div id="overflow-list"></div>
+
+    <div class="sidebar-footer">
+      Trykk <kbd>Ctrl+P</kbd> for å skrive ut
+    </div>
+  </aside>
+
+  <main id="classroom-wrapper">
+    <div id="print-header">
+      <strong id="ph-class"></strong>
+      <span id="ph-date"></span>
+    </div>
+    <div id="classroom">
+      <div id="blackboard">
+        <span id="blackboard-label">TAVLE</span>
+        <span id="classroom-title"></span>
+      </div>
+      <div id="grid-container"></div>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="app.js"></script>
+</body>
+</html>
