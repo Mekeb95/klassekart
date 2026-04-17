@@ -51,12 +51,3 @@ Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassek
 
 ---
 
-## Lokal bruk
-
-Last ned eller klon prosjektet og åpne `index.html` direkte i nettleseren:
-
-```bash
-git clone https://github.com/Mekeb95/klassekart.git
-cd klassekart
-# Åpne index.html i nettleseren din
-```
