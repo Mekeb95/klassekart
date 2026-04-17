@@ -24,13 +24,30 @@ body {
   padding: 16px;
 }
 
+#sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
 #sidebar-header h1 {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  margin-bottom: 16px;
   color: #111;
 }
+.btn-new-class {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #888;
+  white-space: nowrap;
+}
+.btn-new-class:hover { background: #fff0f0; color: #c33; border-color: #c33; }
 
 .section {
   margin-bottom: 18px;
@@ -69,6 +86,18 @@ body {
   line-height: 1.6;
 }
 #students-textarea:focus { outline: none; border-color: #888; }
+
+.dup-warning {
+  display: none;
+  margin-top: 5px;
+  font-size: 11px;
+  color: #a05000;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 4px;
+  padding: 4px 8px;
+  word-break: break-word;
+}
 
 #student-count { font-weight: 400; color: #aaa; font-size: 11px; }
 
@@ -120,6 +149,28 @@ body {
 .btn-sm-danger:hover { background: #fff0f0; border-color: #c00; }
 
 .excl-og { font-size: 11px; color: #888; flex-shrink: 0; }
+
+.range-sm {
+  width: 70px;
+  cursor: pointer;
+  accent-color: #333;
+}
+.text-scale-val {
+  font-size: 12px;
+  color: #555;
+  min-width: 34px;
+  text-align: right;
+}
+.select-narrow {
+  width: 90px;
+  padding: 5px 6px;
+  border: 1px solid #d0d0d0;
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+}
+.select-narrow:focus { outline: none; border-color: #888; }
 
 /* Exclusion list */
 #exclusion-list {
@@ -503,6 +554,17 @@ kbd {
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ── Stats banner ─────────────────────────────────────── */
+.stats-banner {
+  display: none;
+  font-size: 12px;
+  color: #777;
+  padding-bottom: 10px;
+  gap: 14px;
+}
+.stats-banner.visible { display: flex; }
+.stats-banner span { display: inline-flex; align-items: center; gap: 3px; }
+
 /* ── Row / Col controls ───────────────────────────────── */
 #grid-area {
   display: flex;
@@ -606,7 +668,7 @@ kbd {
 
 /* ── Print ────────────────────────────────────────────── */
 @media print {
-  @page { size: A4 landscape; margin: 10mm; }
+  /* @page size is set dynamically via JS (updatePrintPageStyle) */
 
   body { display: block; background: #fff; overflow: visible; height: auto; }
 
@@ -659,4 +721,6 @@ kbd {
   #mismatch-warning, #overflow-list, #toast { display: none !important; }
   #row-controls, #col-controls { display: none !important; }
   .desk-locked::after { display: none !important; }
+  .stats-banner { display: none !important; }
+  .dup-warning { display: none !important; }
 }

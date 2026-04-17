@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Klassekart</title>
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 
@@ -19,7 +19,10 @@
   </div>
 
   <aside id="sidebar">
-    <div id="sidebar-header"><h1>Klassekart</h1></div>
+    <div id="sidebar-header">
+      <h1>Klassekart</h1>
+      <button id="btn-new-class" class="btn-new-class" title="Start ny klasse">Ny klasse</button>
+    </div>
 
     <!-- Klassenavn -->
     <div class="section">
@@ -32,6 +35,8 @@
       <label class="section-label">Elever <span id="student-count">(0)</span></label>
       <textarea id="students-textarea"
         placeholder="Skriv ett navn per linje&#10;&#10;Ola Nordmann&#10;Kari Hansen&#10;..."></textarea>
+      <div id="dup-warning" class="dup-warning"></div>
+      <button id="btn-paste-students" class="btn-secondary mt-6" style="width:100%">📋 Lim inn fra Excel/Sheets</button>
       <div class="sub-row mt-6">
         <input type="text" id="list-name-input" class="input-sm" placeholder="Listenavn...">
         <button id="btn-save-list" class="btn-sm">Lagre liste</button>
@@ -97,6 +102,11 @@
           <option value="right">Høyre side</option>
         </select>
       </div>
+      <div class="input-row">
+        <span class="input-label">Tekststørrelse</span>
+        <input type="range" id="text-scale" min="50" max="150" value="100" class="range-sm">
+        <span id="text-scale-val" class="text-scale-val">100%</span>
+      </div>
     </div>
 
     <!-- Lærerpult -->
@@ -118,6 +128,20 @@
     <!-- Eksport / Import -->
     <div class="section">
       <label class="section-label">Eksport / Import</label>
+      <div class="input-row">
+        <span class="input-label">Format</span>
+        <select id="print-format" class="select-narrow">
+          <option value="A4">A4</option>
+          <option value="A3">A3</option>
+        </select>
+      </div>
+      <div class="input-row">
+        <span class="input-label">Orientering</span>
+        <select id="print-orientation" class="select-narrow">
+          <option value="landscape">Liggende</option>
+          <option value="portrait">Stående</option>
+        </select>
+      </div>
       <div class="btn-row">
         <button id="btn-export" class="btn-secondary">JSON</button>
         <button id="btn-export-png" class="btn-secondary">PNG</button>
@@ -139,6 +163,7 @@
       <strong id="ph-class"></strong>
       <span id="ph-date"></span>
     </div>
+    <div id="stats-banner" class="stats-banner"></div>
     <div id="classroom">
       <div id="blackboard">
         <span id="blackboard-label">TAVLE</span>
@@ -156,6 +181,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

@@ -22,7 +22,10 @@ let state = {
   exclusions:          [],   // [{a: 'Name1', b: 'Name2'}]
   teacherDesk:         null, // {col, row} or null
   desks:               [],   // [{id, col, row, groupId, studentName, locked, size}]
-  groups:              []    // [{id, deskIds:[...]}]
+  groups:              [],   // [{id, deskIds:[...]}]
+  printFormat:         'A4',
+  printOrientation:    'landscape',
+  textScale:           1
 };
 
 const undoStack = [];
@@ -41,11 +44,12 @@ function deskWidth(desk) {
 }
 
 function deskFontSize(name) {
-  if (!name) return '11px';
+  const scale = state.textScale || 1;
+  if (!name) return Math.round(11 * scale) + 'px';
   // Inner desk width ≈ 66px (80px - 14px padding).
   // system-ui char width ≈ font-size × 0.60 on average.
   const computed = Math.floor(66 / (name.length * 0.60));
-  return Math.max(7, Math.min(12, computed)) + 'px';
+  return Math.round(Math.max(7, Math.min(12, computed)) * scale) + 'px';
 }
 
 function shuffle(arr) {
@@ -63,6 +67,17 @@ function safeName(name) {
 
 function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
+}
+
+// Returns names that appear more than once in the array
+function detectDuplicates(names) {
+  const seen = new Set();
+  const dups = [];
+  for (const name of names) {
+    if (seen.has(name)) { if (!dups.includes(name)) dups.push(name); }
+    else seen.add(name);
+  }
+  return dups;
 }
 
 // Returns students in state.students who are not seated at any desk
@@ -240,6 +255,19 @@ function randomizeSeating() {
   renderMismatchWarning();
 }
 
+// ── Print page style (dynamic @page) ─────────────────────
+function updatePrintPageStyle() {
+  let style = document.getElementById('print-page-style');
+  if (!style) {
+    style    = document.createElement('style');
+    style.id = 'print-page-style';
+    document.head.appendChild(style);
+  }
+  const fmt = state.printFormat || 'A4';
+  const ori = state.printOrientation || 'landscape';
+  style.textContent = `@media print { @page { size: ${fmt} ${ori}; margin: 10mm; } }`;
+}
+
 // ── Render helpers ────────────────────────────────────────
 function updateStudentCount() {
   document.getElementById('student-count').textContent = '(' + state.students.length + ')';
@@ -253,6 +281,26 @@ function updateDatalist() {
     opt.value  = name;
     dl.appendChild(opt);
   });
+}
+
+function renderStatsBanner() {
+  const banner = document.getElementById('stats-banner');
+  if (!banner) return;
+  if (state.desks.length === 0) { banner.classList.remove('visible'); return; }
+  const locked   = state.desks.filter(d => d.locked).length;
+  const assigned = state.desks.filter(d => d.studentName && !d.locked).length;
+  const empty    = state.desks.filter(d => !d.studentName).length;
+  banner.textContent = '';
+  [
+    ['🔒', locked,   'låst'],
+    ['🎲', assigned, 'plassert'],
+    ['⬜', empty,    'tom' + (empty !== 1 ? 'me' : '')]
+  ].forEach(([icon, count, label]) => {
+    const span = document.createElement('span');
+    span.textContent = `${icon} ${count} ${label}`;
+    banner.appendChild(span);
+  });
+  banner.classList.add('visible');
 }
 
 function renderMismatchWarning() {
@@ -568,6 +616,7 @@ function renderClassroom() {
 
   initDragAndDrop(container);
   renderRowColControls();
+  renderStatsBanner();
 }
 
 function createDeskElement(desk) {
@@ -674,6 +723,18 @@ function renderAll() {
   document.getElementById('blackboard-position').value = state.blackboardPosition || 'top';
   document.getElementById('btn-teacher-desk').textContent =
     state.teacherDesk ? 'Fjern lærerpult' : 'Legg til lærerpult';
+
+  const tsEl = document.getElementById('text-scale');
+  if (tsEl) {
+    const pct = Math.round((state.textScale || 1) * 100);
+    tsEl.value = pct;
+    document.getElementById('text-scale-val').textContent = pct + '%';
+  }
+  const pfEl = document.getElementById('print-format');
+  if (pfEl) pfEl.value = state.printFormat || 'A4';
+  const poEl = document.getElementById('print-orientation');
+  if (poEl) poEl.value = state.printOrientation || 'landscape';
+  updatePrintPageStyle();
 
   updateStudentCount();
   updateDatalist();
@@ -889,14 +950,18 @@ function showContextMenu(e, deskId, isTeacher) {
       deskObj.size === 2 ? '↔️ Gjør smal' : '↔️ Gjør bred';
   }
 
-  // Position menu (keep within viewport)
-  const menuW = 170;
+  // Position menu — show first to measure, then clamp to viewport
   let left = e.clientX;
   let top  = e.clientY;
-  if (left + menuW > window.innerWidth) left = window.innerWidth - menuW - 6;
   menu.style.left = left + 'px';
   menu.style.top  = top  + 'px';
   menu.classList.add('show');
+  const menuW = menu.offsetWidth;
+  const menuH = menu.offsetHeight;
+  if (left + menuW > window.innerWidth)  left = window.innerWidth  - menuW - 6;
+  if (top  + menuH > window.innerHeight) top  = window.innerHeight - menuH - 6;
+  menu.style.left = left + 'px';
+  menu.style.top  = top  + 'px';
 }
 
 function hideContextMenu() {
@@ -952,6 +1017,59 @@ function setupContextMenuHandlers() {
     hideContextMenu();
     renderClassroom();
   });
+}
+
+// ── New class ────────────────────────────────────────────
+function newClass() {
+  if (!confirm('Start ny klasse? Alt som ikke er lagret vil gå tapt.')) return;
+  state = {
+    version:          1,
+    className:        '',
+    students:         [],
+    deskCount:        24,
+    groupSize:        2,
+    gridCols:         8,
+    gridRows:         6,
+    blackboardPosition: 'top',
+    hasRandomized:    false,
+    exclusions:       [],
+    teacherDesk:      null,
+    desks:            [],
+    groups:           [],
+    printFormat:      'A4',
+    printOrientation: 'landscape',
+    textScale:        1
+  };
+  undoStack.length = 0;
+  document.getElementById('dup-warning').style.display = 'none';
+  rebuildDesks(false);
+  renderAll();
+  showToast('Ny klasse opprettet');
+}
+
+// ── Paste from clipboard ──────────────────────────────────
+async function pasteFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text.trim()) { showToast('Utklippstavlen er tom'); return; }
+    const names = text
+      .split(/[\n\r]+/)
+      .flatMap(line => line.split(/[\t,;]+/))
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (names.length === 0) { showToast('Ingen navn funnet'); return; }
+    const before = state.students.length;
+    state.students = [...new Set([...state.students, ...names])];
+    const added = state.students.length - before;
+    document.getElementById('students-textarea').value = state.students.join('\n');
+    document.getElementById('dup-warning').style.display = 'none';
+    updateStudentCount();
+    updateDatalist();
+    renderMismatchWarning();
+    showToast(added > 0 ? `${added} navn lagt til` : 'Ingen nye navn funnet');
+  } catch {
+    showToast('Gi tilgang til utklippstavle i nettleseren');
+  }
 }
 
 // ── Teacher desk toggle ───────────────────────────────────
@@ -1136,6 +1254,9 @@ function mergeStateDefaults(parsed) {
   if (parsed.teacherDesk === undefined) parsed.teacherDesk  = null;
   // Loaded states already have a layout — don't auto-layout again
   parsed.hasRandomized = true;
+  if (parsed.printFormat === undefined)      parsed.printFormat      = 'A4';
+  if (parsed.printOrientation === undefined) parsed.printOrientation = 'landscape';
+  if (parsed.textScale === undefined)        parsed.textScale        = 1;
   if (parsed.desks) {
     parsed.desks.forEach(d => {
       if (d.locked === undefined) d.locked = false;
@@ -1167,7 +1288,16 @@ function setupEventListeners() {
   });
 
   document.getElementById('students-textarea').addEventListener('input', e => {
-    state.students = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
+    const names  = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
+    const dups   = detectDuplicates(names);
+    const warnEl = document.getElementById('dup-warning');
+    if (dups.length > 0) {
+      warnEl.textContent   = '⚠ Duplikat: ' + dups.join(', ');
+      warnEl.style.display = '';
+    } else {
+      warnEl.style.display = 'none';
+    }
+    state.students = [...new Set(names)];
     updateStudentCount();
     updateDatalist();
     renderMismatchWarning();
@@ -1243,6 +1373,29 @@ function setupEventListeners() {
     if (e.target.files.length > 0) { importJSON(e.target.files[0]); e.target.value = ''; }
   });
 
+  // New class
+  document.getElementById('btn-new-class').addEventListener('click', newClass);
+
+  // Paste from clipboard
+  document.getElementById('btn-paste-students').addEventListener('click', pasteFromClipboard);
+
+  // Text scale slider
+  document.getElementById('text-scale').addEventListener('input', e => {
+    state.textScale = +e.target.value / 100;
+    document.getElementById('text-scale-val').textContent = e.target.value + '%';
+    renderClassroom();
+  });
+
+  // Print format / orientation
+  document.getElementById('print-format').addEventListener('change', e => {
+    state.printFormat = e.target.value;
+    updatePrintPageStyle();
+  });
+  document.getElementById('print-orientation').addEventListener('change', e => {
+    state.printOrientation = e.target.value;
+    updatePrintPageStyle();
+  });
+
   setupContextMenuHandlers();
 
   // Cancel move mode with Escape
@@ -1269,6 +1422,7 @@ function initApp() {
 
   setupEventListeners();
   renderAll();
+  updatePrintPageStyle();
 
   // Auto-save on unload for session continuity
   window.addEventListener('beforeunload', () => {
