@@ -29,6 +29,7 @@ const undoStack = [];
 let dragDeskId    = null;
 let ctxDeskId     = null;
 let ctxIsTeacher  = false;
+let moveMode      = null; // { type: 'row'|'col', index: number }
 
 // ── Utilities ─────────────────────────────────────────────
 function cellToPos(col, row) {
@@ -62,6 +63,17 @@ function safeName(name) {
 
 function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
+}
+
+// Returns students in state.students who are not seated at any desk
+function studentsWithoutDesk() {
+  const assigned = new Set(state.desks.map(d => d.studentName).filter(Boolean));
+  return state.students.filter(s => !assigned.has(s));
+}
+
+function isAxisEmpty(axis, value) {
+  return !state.desks.some(d => d[axis] === value) &&
+         !(state.teacherDesk && state.teacherDesk[axis] === value);
 }
 
 // ── Undo ─────────────────────────────────────────────────
@@ -246,52 +258,211 @@ function updateDatalist() {
 function renderMismatchWarning() {
   const w  = document.getElementById('mismatch-warning');
   const ol = document.getElementById('overflow-list');
-  const sc = state.students.length;
-  const dc = state.deskCount;
+  w.innerHTML = '';
+  ol.textContent = '';
 
-  if (sc > dc) {
-    const missing = sc - dc;
+  const unassigned  = studentsWithoutDesk();
+  const emptyDesks  = state.desks.filter(d => !d.studentName).length;
+
+  if (unassigned.length > 0) {
+    // Some students have no desk
     w.className = 'show';
-    w.innerHTML = '';
-
     const txt = document.createElement('span');
-    txt.textContent = `${missing} elev${missing > 1 ? 'er' : ''} mangler pult`;
-
+    txt.textContent = `${unassigned.length} elev${unassigned.length > 1 ? 'er' : ''} har ikke pult`;
     const btn = document.createElement('button');
     btn.className   = 'btn-fix-desks';
-    btn.textContent = `+ Legg til ${missing} pult${missing > 1 ? 'er' : ''}`;
+    btn.textContent = `+ Legg til ${unassigned.length} pult${unassigned.length > 1 ? 'er' : ''}`;
     btn.addEventListener('click', fixMissingDesks);
-
     w.appendChild(txt);
     w.appendChild(btn);
-    ol.textContent = 'Uten pult: ' + state.students.slice(dc).join(', ');
-  } else if (sc > 0 && sc < dc) {
-    w.className   = 'show';
-    w.innerHTML   = '';
-    w.textContent = `${dc - sc} pult${dc - sc > 1 ? 'er' : ''} vil stå tom${dc - sc > 1 ? 'me' : ''}`;
-    ol.textContent = '';
+    ol.textContent = 'Uten pult: ' + unassigned.join(', ');
+  } else if (emptyDesks > 0) {
+    // More desks than students
+    w.className = 'show';
+    const txt = document.createElement('span');
+    txt.textContent = `${emptyDesks} pult${emptyDesks > 1 ? 'er' : ''} er tom${emptyDesks > 1 ? 'me' : ''}`;
+    const btn = document.createElement('button');
+    btn.className   = 'btn-fix-desks btn-trim-desks';
+    btn.textContent = `Fjern ${emptyDesks} overflødige pult${emptyDesks > 1 ? 'er' : ''}`;
+    btn.addEventListener('click', removeExcessDesks);
+    w.appendChild(txt);
+    w.appendChild(btn);
   } else {
-    w.className    = '';
-    w.innerHTML    = '';
-    ol.textContent = '';
+    w.className = '';
   }
 }
 
 function fixMissingDesks() {
   pushUndo();
-  const overflow = state.students.slice(state.deskCount);
-  state.deskCount = state.students.length;
-  document.getElementById('desk-count').value = state.deskCount;
-  rebuildDesks(true);
+  const unassigned = studentsWithoutDesk();
+  if (unassigned.length === 0) return;
 
-  // Assign overflow students to the newly created empty desks
   const emptyDesks = state.desks.filter(d => !d.studentName && !d.locked);
-  overflow.forEach((name, i) => {
-    if (emptyDesks[i]) emptyDesks[i].studentName = name;
-  });
+  // Fill existing empty desks first; remainder needs new desks placed on grid
+  unassigned.slice(0, emptyDesks.length).forEach((name, i) => { emptyDesks[i].studentName = name; });
+  const toPlace = unassigned.slice(emptyDesks.length);
 
+  if (toPlace.length > 0) {
+    const occupied = new Set(state.desks.map(d => `${d.col},${d.row}`));
+    if (state.teacherDesk) occupied.add(`${state.teacherDesk.col},${state.teacherDesk.row}`);
+    let nextId = Date.now();
+    toPlace.forEach(name => {
+      let col = 1, row = state.gridRows;
+      outer: for (let r = 1; r <= state.gridRows + 10; r++) {
+        for (let c = 1; c <= state.gridCols; c++) {
+          if (!occupied.has(`${c},${r}`)) { col = c; row = r; break outer; }
+        }
+      }
+      if (row > state.gridRows) {
+        state.gridRows = row;
+        document.getElementById('grid-rows').value = row;
+      }
+      occupied.add(`${col},${row}`);
+      state.desks.push({ id: 'd_fx' + (nextId++), col, row, groupId: 'g_extra', studentName: name, locked: false, size: 1 });
+    });
+  }
+
+  state.deskCount = state.desks.length;
+  document.getElementById('desk-count').value = state.deskCount;
   renderAll();
-  showToast(`${overflow.length} pult${overflow.length > 1 ? 'er' : ''} lagt til`);
+  showToast(`${unassigned.length} elev${unassigned.length > 1 ? 'er' : ''} tildelt pult`);
+}
+
+function removeExcessDesks() {
+  pushUndo();
+  const before = state.desks.length;
+  state.desks   = state.desks.filter(d => d.studentName || d.locked);
+  const removed = before - state.desks.length;
+  state.deskCount = state.desks.length;
+  document.getElementById('desk-count').value = state.deskCount;
+  renderAll();
+  showToast(`${removed} tom${removed !== 1 ? 'me' : ''} pult${removed !== 1 ? 'er' : ''} fjernet`);
+}
+
+// ── Row / Column delete & move ────────────────────────────
+
+// Deletes an entire row or column, compacting toward the board in one pass.
+// axis: 'row' | 'col'   index: 1-based row or column number
+function deleteAxis(axis, index) {
+  pushUndo();
+  const pos   = state.blackboardPosition || 'top';
+  const isRow = axis === 'row';
+  // Compact toward board: rows shift up for board-top, down for board-bottom;
+  // cols shift left for board-left/top/bottom, right for board-right.
+  const shiftBack = isRow ? pos !== 'bottom' : pos !== 'right';
+  const delta     = shiftBack ? -1 : 1;
+  const dimKey    = isRow ? 'gridRows' : 'gridCols';
+  const inputId   = isRow ? 'grid-rows' : 'grid-cols';
+  const label     = isRow ? 'Rad' : 'Kolonne';
+
+  let removedCount = 0;
+  const newDesks = [];
+  for (const d of state.desks) {
+    if (d[axis] === index) { removedCount++; continue; }
+    if (shiftBack ? d[axis] > index : d[axis] < index) d[axis] += delta;
+    newDesks.push(d);
+  }
+  state.desks     = newDesks;
+  state.deskCount = newDesks.length;
+
+  let teacherRemoved = false;
+  if (state.teacherDesk) {
+    if (state.teacherDesk[axis] === index) {
+      state.teacherDesk = null;
+      teacherRemoved    = true;
+      document.getElementById('btn-teacher-desk').textContent = 'Legg til lærerpult';
+    } else if (shiftBack ? state.teacherDesk[axis] > index : state.teacherDesk[axis] < index) {
+      state.teacherDesk[axis] += delta;
+    }
+  }
+
+  state[dimKey] = Math.max(1, state[dimKey] - 1);
+  document.getElementById(inputId).value      = state[dimKey];
+  document.getElementById('desk-count').value = state.deskCount;
+  renderAll();
+  const base = removedCount > 0
+    ? `${label} slettet (${removedCount} pult${removedCount !== 1 ? 'er' : ''} fjernet)`
+    : `Tom ${label.toLowerCase()} slettet`;
+  showToast(teacherRemoved ? base + ' + lærerpult fjernet' : base);
+}
+
+// Moves all desks (and teacher desk) from one row/col to another empty row/col.
+function moveAxis(axis, from, to) {
+  if (from === to) return;
+  pushUndo();
+  state.desks.forEach(d => { if (d[axis] === from) d[axis] = to; });
+  if (state.teacherDesk && state.teacherDesk[axis] === from) state.teacherDesk[axis] = to;
+  moveMode = null;
+  renderAll();
+  showToast(axis === 'row' ? 'Rad flyttet' : 'Kolonne flyttet');
+}
+
+function enterMoveMode(type, index) {
+  moveMode = { type, index };
+  renderClassroom();
+}
+
+function exitMoveMode() {
+  moveMode = null;
+  renderClassroom();
+}
+
+// ── Row / Column controls rendering ──────────────────────
+function renderRowColControls() {
+  const rowCtrl = document.getElementById('row-controls');
+  const colCtrl = document.getElementById('col-controls');
+  if (!rowCtrl || !colCtrl) return;
+
+  rowCtrl.innerHTML = '';
+  colCtrl.innerHTML = '';
+  rowCtrl.style.height = (state.gridRows * CELL_STRIDE - CELL_GAP) + 'px';
+  colCtrl.style.width  = (state.gridCols * CELL_STRIDE - CELL_GAP) + 'px';
+
+  // Builds one control slot for a row or column.
+  function buildSlot(axis, index) {
+    const isRow    = axis === 'row';
+    const inMode   = moveMode?.type === axis;
+    const otherMode= moveMode && !inMode;
+    const ctrl     = document.createElement('div');
+    ctrl.className = isRow ? 'row-ctrl' : 'col-ctrl';
+    if (isRow) { ctrl.style.top    = ((index - 1) * CELL_STRIDE) + 'px'; ctrl.style.height = CELL_SIZE + 'px'; }
+    else       { ctrl.style.left   = ((index - 1) * CELL_STRIDE) + 'px'; ctrl.style.width  = CELL_SIZE + 'px'; }
+
+    if (inMode) {
+      if (moveMode.index === index) {
+        ctrl.classList.add('rc-selected');
+        const btn = document.createElement('button');
+        btn.className = 'ctrl-btn ctrl-cancel'; btn.textContent = '✕'; btn.title = 'Avbryt flytting';
+        btn.addEventListener('click', e => { e.stopPropagation(); exitMoveMode(); });
+        ctrl.appendChild(btn);
+      } else if (isAxisEmpty(axis, index)) {
+        ctrl.classList.add('rc-valid');
+        ctrl.title = `Flytt ${isRow ? 'rad' : 'kolonne'} ${moveMode.index} hit`;
+        ctrl.style.cursor = 'pointer';
+        ctrl.addEventListener('click', () => moveAxis(axis, moveMode.index, index));
+      } else {
+        ctrl.classList.add('rc-invalid');
+        ctrl.title = `${isRow ? 'Raden' : 'Kolonnen'} er ikke tom`;
+      }
+    } else if (!otherMode) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'ctrl-btn ctrl-delete'; delBtn.textContent = '×';
+      delBtn.title = `Slett ${isRow ? 'rad' : 'kolonne'}`;
+      delBtn.addEventListener('click', e => { e.stopPropagation(); deleteAxis(axis, index); });
+
+      const movBtn = document.createElement('button');
+      movBtn.className = 'ctrl-btn ctrl-move'; movBtn.textContent = isRow ? '⇅' : '⇄';
+      movBtn.title = `Flytt ${isRow ? 'rad' : 'kolonne'} til tom ${isRow ? 'rad' : 'kolonne'}`;
+      movBtn.addEventListener('click', e => { e.stopPropagation(); enterMoveMode(axis, index); });
+
+      ctrl.appendChild(delBtn);
+      ctrl.appendChild(movBtn);
+    }
+    return ctrl;
+  }
+
+  for (let r = 1; r <= state.gridRows; r++) rowCtrl.appendChild(buildSlot('row', r));
+  for (let c = 1; c <= state.gridCols; c++) colCtrl.appendChild(buildSlot('col', c));
 }
 
 function renderGroupBackgrounds(container) {
@@ -396,6 +567,7 @@ function renderClassroom() {
   }
 
   initDragAndDrop(container);
+  renderRowColControls();
 }
 
 function createDeskElement(desk) {
@@ -794,22 +966,22 @@ function toggleTeacherDesk() {
     const centerRow  = Math.ceil(state.gridRows / 2);
 
     if (pos === 'top') {
-      // Shift all student desks down 2 rows, add teacher at row 1 (row 2 = empty gap)
-      state.desks.forEach(d => { d.row += 2; });
-      state.gridRows += 2;
+      // Shift all student desks down 1 row, teacher at row 1
+      state.desks.forEach(d => { d.row += 1; });
+      state.gridRows += 1;
       state.teacherDesk = { col: centerCol, row: 1 };
     } else if (pos === 'bottom') {
-      // Expand grid down, teacher at last row (second-to-last = empty gap)
-      state.gridRows += 2;
+      // Expand grid down 1 row, teacher at last row
+      state.gridRows += 1;
       state.teacherDesk = { col: centerCol, row: state.gridRows };
     } else if (pos === 'left') {
-      // Shift all student desks right 2 cols, add teacher at col 1 (col 2 = empty gap)
-      state.desks.forEach(d => { d.col += 2; });
-      state.gridCols += 2;
+      // Shift all student desks right 1 col, teacher at col 1
+      state.desks.forEach(d => { d.col += 1; });
+      state.gridCols += 1;
       state.teacherDesk = { col: 1, row: centerRow };
     } else { // right
-      // Expand grid right, teacher at last col (second-to-last = empty gap)
-      state.gridCols += 2;
+      // Expand grid right 1 col, teacher at last col
+      state.gridCols += 1;
       state.teacherDesk = { col: state.gridCols, row: centerRow };
     }
 
@@ -927,6 +1099,16 @@ async function exportPNG() {
     return;
   }
   showToast('Genererer bilde...');
+
+  // Temporarily hide lock icons and edge controls for the export
+  const exportStyle = document.createElement('style');
+  exportStyle.id = 'png-export-overrides';
+  exportStyle.textContent = `
+    .desk-locked::after { display: none !important; }
+    #row-controls, #col-controls { display: none !important; }
+  `;
+  document.head.appendChild(exportStyle);
+
   try {
     const el     = document.getElementById('classroom');
     const canvas = await html2canvas(el, {
@@ -942,6 +1124,8 @@ async function exportPNG() {
   } catch (err) {
     showToast('Kunne ikke eksportere bilde');
     console.error(err);
+  } finally {
+    exportStyle.remove();
   }
 }
 
@@ -1060,6 +1244,11 @@ function setupEventListeners() {
   });
 
   setupContextMenuHandlers();
+
+  // Cancel move mode with Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && moveMode) exitMoveMode();
+  });
 }
 
 // ── Init ──────────────────────────────────────────────────

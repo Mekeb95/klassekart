@@ -253,6 +253,10 @@ body {
   transition: background 0.15s;
 }
 .btn-fix-desks:hover { background: #5a4500; }
+.btn-trim-desks {
+  background: #555 !important;
+}
+.btn-trim-desks:hover { background: #333 !important; }
 
 .sidebar-footer {
   margin-top: auto;
@@ -499,6 +503,107 @@ kbd {
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ── Row / Col controls ───────────────────────────────── */
+#grid-area {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+#col-controls {
+  height: 28px;
+  margin-left: 28px; /* offset to align with grid (row-controls width) */
+  position: relative;
+  flex-shrink: 0;
+}
+
+#grid-row-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+#row-controls {
+  width: 28px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Individual row / col control slots */
+.row-ctrl {
+  position: absolute;
+  left: 0;
+  width: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.col-ctrl {
+  position: absolute;
+  top: 0;
+  height: 28px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* Buttons inside each control — hidden until hover */
+.ctrl-btn {
+  opacity: 0;
+  transition: opacity 0.13s;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-family: inherit;
+  color: #444;
+  white-space: nowrap;
+}
+.row-ctrl:hover .ctrl-btn,
+.col-ctrl:hover .ctrl-btn { opacity: 1; }
+
+.ctrl-delete { color: #b00; border-color: #e8b0b0; }
+.ctrl-delete:hover { background: #fff0f0; border-color: #b00; }
+.ctrl-move   { color: #447; border-color: #aac; }
+.ctrl-move:hover { background: #f0f0ff; border-color: #447; }
+.ctrl-cancel { color: #888; }
+.ctrl-cancel:hover { background: #f5f5f5; }
+
+/* Move-mode target colours (always visible) */
+.rc-valid {
+  background: rgba(34, 170, 80, 0.18);
+  border-radius: 4px;
+  outline: 2px solid #22aa50;
+  outline-offset: -2px;
+  opacity: 1 !important;
+}
+.rc-invalid {
+  background: rgba(200, 40, 40, 0.12);
+  border-radius: 4px;
+  outline: 2px solid #cc3333;
+  outline-offset: -2px;
+  opacity: 1 !important;
+}
+.rc-selected {
+  background: rgba(80, 120, 220, 0.18);
+  border-radius: 4px;
+  outline: 2px dashed #4466dd;
+  outline-offset: -2px;
+  opacity: 1 !important;
+}
+/* Show buttons inside move-mode slots */
+.rc-valid .ctrl-btn,
+.rc-invalid .ctrl-btn,
+.rc-selected .ctrl-btn { opacity: 1; }
+
 /* ── Print ────────────────────────────────────────────── */
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
@@ -552,4 +657,6 @@ kbd {
   .desk.dragging, .desk.drag-over { opacity: 1; outline: none; }
 
   #mismatch-warning, #overflow-list, #toast { display: none !important; }
+  #row-controls, #col-controls { display: none !important; }
+  .desk-locked::after { display: none !important; }
 }

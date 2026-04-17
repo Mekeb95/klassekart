@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Klassekart</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 
@@ -144,12 +144,18 @@
         <span id="blackboard-label">TAVLE</span>
         <span id="classroom-title"></span>
       </div>
-      <div id="grid-container"></div>
+      <div id="grid-area">
+        <div id="col-controls"></div>
+        <div id="grid-row-wrap">
+          <div id="row-controls"></div>
+          <div id="grid-container"></div>
+        </div>
+      </div>
     </div>
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
