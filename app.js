@@ -26,7 +26,8 @@ let state = {
   printFormat:            'A4',
   printOrientation:       'landscape',
   textScale:              1,
-  hideEmptyDesksOnPrint:  false
+  hideEmptyDesksOnPrint:  false,
+  blackboardInset:        { before: 0, after: 0 }
 };
 
 const undoStack = [];
@@ -581,10 +582,13 @@ function renderGroupBackgrounds(container) {
   });
 }
 
+const MIN_BB_SIZE = 40;
+
 function syncBlackboard() {
-  const bb  = document.getElementById('blackboard');
-  const cls = document.getElementById('classroom');
-  const pos = state.blackboardPosition || 'top';
+  const bb     = document.getElementById('blackboard');
+  const cls    = document.getElementById('classroom');
+  const pos    = state.blackboardPosition || 'top';
+  const inset  = state.blackboardInset || { before: 0, after: 0 };
 
   cls.classList.remove('bb-top', 'bb-bottom', 'bb-left', 'bb-right');
   cls.classList.add('bb-' + pos);
@@ -593,12 +597,68 @@ function syncBlackboard() {
   const gridH = state.gridRows * CELL_STRIDE - CELL_GAP;
 
   if (pos === 'top' || pos === 'bottom') {
-    bb.style.width  = gridW + 'px';
-    bb.style.height = '';
+    const w = Math.max(MIN_BB_SIZE, gridW - inset.before - inset.after);
+    bb.style.width        = w + 'px';
+    bb.style.height       = '';
+    bb.style.marginLeft   = inset.before + 'px';
+    bb.style.marginRight  = inset.after  + 'px';
+    bb.style.marginTop    = '';
+    bb.style.marginBottom = '';
   } else {
-    bb.style.width  = '';
-    bb.style.height = gridH + 'px';
+    const h = Math.max(MIN_BB_SIZE, gridH - inset.before - inset.after);
+    bb.style.height       = h + 'px';
+    bb.style.width        = '';
+    bb.style.marginTop    = inset.before + 'px';
+    bb.style.marginBottom = inset.after  + 'px';
+    bb.style.marginLeft   = '';
+    bb.style.marginRight  = '';
   }
+
+  setupBlackboardHandles(pos);
+}
+
+function setupBlackboardHandles(pos) {
+  const bb = document.getElementById('blackboard');
+  bb.querySelectorAll('.bb-handle').forEach(h => h.remove());
+
+  const hBefore = document.createElement('div');
+  hBefore.className = 'bb-handle bb-handle-before';
+  const hAfter = document.createElement('div');
+  hAfter.className = 'bb-handle bb-handle-after';
+  bb.appendChild(hBefore);
+  bb.appendChild(hAfter);
+
+  const isHoriz = pos === 'top' || pos === 'bottom';
+
+  function makeDragHandler(isBefore) {
+    return function(e) {
+      e.preventDefault();
+      const gridDim   = isHoriz ? state.gridCols * CELL_STRIDE - CELL_GAP
+                                : state.gridRows * CELL_STRIDE - CELL_GAP;
+      const startPos  = isHoriz ? e.clientX : e.clientY;
+      const startVal  = isBefore ? state.blackboardInset.before : state.blackboardInset.after;
+      const otherVal  = () => isBefore ? state.blackboardInset.after : state.blackboardInset.before;
+
+      function onMove(ev) {
+        const delta    = (isHoriz ? ev.clientX : ev.clientY) - startPos;
+        const adjusted = isBefore ? delta : -delta;
+        const maxInset = Math.max(0, gridDim - MIN_BB_SIZE - otherVal());
+        const newVal   = Math.max(0, Math.min(maxInset, startVal + adjusted));
+        if (isBefore) state.blackboardInset.before = newVal;
+        else          state.blackboardInset.after  = newVal;
+        syncBlackboard();
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+  }
+
+  hBefore.addEventListener('mousedown', makeDragHandler(true));
+  hAfter.addEventListener('mousedown', makeDragHandler(false));
 }
 
 function renderClassroom() {
@@ -1064,9 +1124,11 @@ function newClass() {
     teacherDesk:      null,
     desks:            [],
     groups:           [],
-    printFormat:      'A4',
-    printOrientation: 'landscape',
-    textScale:        1
+    printFormat:           'A4',
+    printOrientation:      'landscape',
+    textScale:             1,
+    hideEmptyDesksOnPrint: false,
+    blackboardInset:       { before: 0, after: 0 }
   };
   undoStack.length = 0;
   moveMode  = null;
@@ -1254,6 +1316,7 @@ async function exportPNG() {
   exportStyle.textContent = `
     .desk-locked::after { display: none !important; }
     #row-controls, #col-controls { display: none !important; }
+    .bb-handle { display: none !important; }
     ${state.hideEmptyDesksOnPrint ? '.desk-empty { visibility: hidden !important; }' : ''}
   `;
   document.head.appendChild(exportStyle);
@@ -1288,6 +1351,7 @@ function mergeStateDefaults(parsed) {
   if (parsed.printOrientation === undefined) parsed.printOrientation = 'landscape';
   if (parsed.textScale === undefined)        parsed.textScale        = 1;
   if (parsed.hideEmptyDesksOnPrint === undefined) parsed.hideEmptyDesksOnPrint = false;
+  if (!parsed.blackboardInset) parsed.blackboardInset = { before: 0, after: 0 };
   if (parsed.desks) {
     parsed.desks.forEach(d => {
       if (d.locked === undefined) d.locked = false;
@@ -1363,6 +1427,7 @@ function setupEventListeners() {
 
   document.getElementById('blackboard-position').addEventListener('change', e => {
     state.blackboardPosition = e.target.value;
+    state.blackboardInset = { before: 0, after: 0 };
     renderClassroom();
   });
 

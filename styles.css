@@ -442,12 +442,11 @@ kbd {
 /* Vertical blackboard (left/right) */
 #classroom.bb-left #blackboard,
 #classroom.bb-right #blackboard {
-  width: 52px !important;
-  height: auto;
-  align-self: stretch;
+  width: 52px;
   flex-direction: column;
   justify-content: center;
   gap: 8px;
+  align-self: flex-start;
 }
 #classroom.bb-left #blackboard-label,
 #classroom.bb-left #classroom-title {
@@ -461,6 +460,7 @@ kbd {
 
 /* ── Blackboard ───────────────────────────────────────── */
 #blackboard {
+  position: relative;
   height: 54px;
   background: #2d5a27;
   border-radius: 5px;
@@ -471,6 +471,54 @@ kbd {
   flex-shrink: 0;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+}
+
+/* Resize handles */
+.bb-handle {
+  position: absolute;
+  z-index: 5;
+}
+/* top/bottom orientation: handles on left and right edges */
+#classroom.bb-top .bb-handle,
+#classroom.bb-bottom .bb-handle {
+  top: 0; bottom: 0; width: 10px;
+  cursor: ew-resize;
+}
+#classroom.bb-top .bb-handle-before,
+#classroom.bb-bottom .bb-handle-before { left: 0; }
+#classroom.bb-top .bb-handle-after,
+#classroom.bb-bottom .bb-handle-after  { right: 0; }
+
+/* left/right orientation: handles on top and bottom edges */
+#classroom.bb-left .bb-handle,
+#classroom.bb-right .bb-handle {
+  left: 0; right: 0; height: 10px;
+  cursor: ns-resize;
+}
+#classroom.bb-left .bb-handle-before,
+#classroom.bb-right .bb-handle-before { top: 0; }
+#classroom.bb-left .bb-handle-after,
+#classroom.bb-right .bb-handle-after  { bottom: 0; }
+
+/* Visual indicator dot on hover */
+.bb-handle::after {
+  content: '';
+  position: absolute;
+  background: rgba(255,255,255,0.45);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.bb-handle:hover::after { opacity: 1; }
+#classroom.bb-top .bb-handle::after,
+#classroom.bb-bottom .bb-handle::after {
+  top: 50%; left: 2px; right: 2px; height: 18px;
+  transform: translateY(-50%);
+}
+#classroom.bb-left .bb-handle::after,
+#classroom.bb-right .bb-handle::after {
+  left: 50%; top: 2px; bottom: 2px; width: 18px;
+  transform: translateX(-50%);
 }
 #blackboard-label {
   font-size: 10px;
@@ -785,4 +833,5 @@ kbd {
   .desk-locked::after { display: none !important; }
   .stats-banner { display: none !important; }
   .dup-warning { display: none !important; }
+  .bb-handle { display: none !important; }
 }
