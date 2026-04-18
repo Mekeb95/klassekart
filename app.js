@@ -625,7 +625,7 @@ function syncBlackboard() {
 
 function setupBlackboardHandles(pos) {
   const bb = document.getElementById('blackboard');
-  bb.querySelectorAll('.bb-handle').forEach(h => h.remove());
+  bb.querySelectorAll('.bb-handle, #bb-reset').forEach(h => h.remove());
 
   const hBefore = document.createElement('div');
   hBefore.className = 'bb-handle bb-handle-before';
