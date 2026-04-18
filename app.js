@@ -163,8 +163,7 @@ function rebuildDesks(preserveNames) {
   const needed = calcRequiredRows(state.deskCount, state.groupSize, state.gridCols) + 1;
   if (state.gridRows < needed) {
     state.gridRows = needed;
-    const el = document.getElementById('grid-rows');
-    if (el) el.value = state.gridRows;
+    updateGridDisplay();
   }
 }
 
@@ -207,8 +206,7 @@ function randomizeSeating() {
     const auto = computeAutoLayout(state.deskCount, state.groupSize);
     state.gridCols = auto.gridCols;
     state.gridRows = auto.gridRows;
-    document.getElementById('grid-cols').value = state.gridCols;
-    document.getElementById('grid-rows').value = state.gridRows;
+    updateGridDisplay();
     rebuildDesks(false); // fresh positions using the new layout
     state.hasRandomized = true;
   }
@@ -253,6 +251,14 @@ function randomizeSeating() {
 
   renderClassroom();
   renderMismatchWarning();
+}
+
+// ── Grid display sync ────────────────────────────────────
+function updateGridDisplay() {
+  const cv = document.getElementById('grid-cols-val');
+  const rv = document.getElementById('grid-rows-val');
+  if (cv) cv.textContent = state.gridCols;
+  if (rv) rv.textContent = state.gridRows;
 }
 
 // ── Print page style (dynamic @page) ─────────────────────
@@ -363,7 +369,6 @@ function fixMissingDesks() {
       }
       if (row > state.gridRows) {
         state.gridRows = row;
-        document.getElementById('grid-rows').value = row;
       }
       occupied.add(`${col},${row}`);
       state.desks.push({ id: 'd_fx' + (nextId++), col, row, groupId: 'g_extra', studentName: name, locked: false, size: 1 });
@@ -425,7 +430,6 @@ function deleteAxis(axis, index) {
   }
 
   state[dimKey] = Math.max(1, state[dimKey] - 1);
-  document.getElementById(inputId).value      = state[dimKey];
   document.getElementById('desk-count').value = state.deskCount;
   renderAll();
   const base = removedCount > 0
@@ -718,8 +722,7 @@ function renderAll() {
   document.getElementById('students-textarea').value = state.students.join('\n');
   document.getElementById('desk-count').value        = state.deskCount;
   document.getElementById('group-size').value        = state.groupSize;
-  document.getElementById('grid-cols').value         = state.gridCols;
-  document.getElementById('grid-rows').value         = state.gridRows;
+  updateGridDisplay();
   document.getElementById('blackboard-position').value = state.blackboardPosition || 'top';
   document.getElementById('btn-teacher-desk').textContent =
     state.teacherDesk ? 'Fjern lærerpult' : 'Legg til lærerpult';
@@ -1104,8 +1107,7 @@ function toggleTeacherDesk() {
     }
 
     document.getElementById('btn-teacher-desk').textContent = 'Fjern lærerpult';
-    document.getElementById('grid-cols').value = state.gridCols;
-    document.getElementById('grid-rows').value = state.gridRows;
+    updateGridDisplay();
   }
   renderClassroom();
 }
@@ -1316,15 +1318,24 @@ function setupEventListeners() {
     renderAll();
   });
 
-  document.getElementById('grid-cols').addEventListener('change', e => {
-    state.gridCols = Math.max(1, Math.min(20, +e.target.value || 1));
-    e.target.value = state.gridCols;
+  document.getElementById('grid-cols-dec').addEventListener('click', () => {
+    state.gridCols = Math.max(1, state.gridCols - 1);
+    updateGridDisplay();
     renderClassroom();
   });
-
-  document.getElementById('grid-rows').addEventListener('change', e => {
-    state.gridRows = Math.max(1, Math.min(20, +e.target.value || 1));
-    e.target.value = state.gridRows;
+  document.getElementById('grid-cols-inc').addEventListener('click', () => {
+    state.gridCols = Math.min(20, state.gridCols + 1);
+    updateGridDisplay();
+    renderClassroom();
+  });
+  document.getElementById('grid-rows-dec').addEventListener('click', () => {
+    state.gridRows = Math.max(1, state.gridRows - 1);
+    updateGridDisplay();
+    renderClassroom();
+  });
+  document.getElementById('grid-rows-inc').addEventListener('click', () => {
+    state.gridRows = Math.min(20, state.gridRows + 1);
+    updateGridDisplay();
     renderClassroom();
   });
 

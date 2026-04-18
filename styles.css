@@ -76,7 +76,7 @@ body {
 
 #students-textarea {
   width: 100%;
-  height: 140px;
+  height: 120px;
   padding: 8px 9px;
   border: 1px solid #d0d0d0;
   border-radius: 5px;
@@ -149,6 +149,67 @@ body {
 .btn-sm-danger:hover { background: #fff0f0; border-color: #c00; }
 
 .excl-og { font-size: 11px; color: #888; flex-shrink: 0; }
+.mb-6 { margin-bottom: 6px; }
+
+/* Stepper (+/−) */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.stepper-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  padding: 0;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.stepper-btn:hover { background: #f0f0f0; border-color: #999; }
+.stepper-btn:active { background: #e5e5e5; }
+.stepper-val {
+  font-size: 13px;
+  color: #333;
+  min-width: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collapsible lists */
+.details-lists {
+  margin-top: 8px;
+}
+.details-summary {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #aaa;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+}
+.details-summary::-webkit-details-marker { display: none; }
+.details-summary::before {
+  content: '▶';
+  font-size: 8px;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+details[open] .details-summary::before { transform: rotate(90deg); }
 
 .range-sm {
   width: 70px;
@@ -285,6 +346,7 @@ body {
   background: #fff8e1;
   color: #7a5f00;
   border: 1px solid #ffe082;
+  margin-bottom: 14px;
 }
 #overflow-list { font-size: 11px; color: #999; margin-top: 3px; word-break: break-word; }
 
