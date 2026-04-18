@@ -524,7 +524,7 @@ kbd {
   padding: 0;
 }
 #blackboard:hover #bb-reset { opacity: 1; }
-#bb-reset:hover { background: rgba(255,255,255,0.3); color: #fff; }
+#bb-reset:hover { background: rgba(255,255,255,0.25); }
 
 /* Visual indicator dot on hover */
 .bb-handle::after {
