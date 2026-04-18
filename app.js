@@ -1305,7 +1305,7 @@ function setupEventListeners() {
     const warnEl = document.getElementById('dup-warning');
     if (dups.length > 0) {
       warnEl.textContent   = '⚠ Duplikat: ' + dups.join(', ');
-      warnEl.style.display = '';
+      warnEl.style.display = 'block';
     } else {
       warnEl.style.display = 'none';
     }
