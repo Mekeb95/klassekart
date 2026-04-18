@@ -7,6 +7,8 @@ const CELL_STRIDE = CELL_SIZE + CELL_GAP; // 88px per cell slot
 const LS_MAP      = 'klassekart_';        // prefix for saved seating charts
 const LS_LIST     = 'kl_liste_';          // prefix for saved student lists
 const MAX_UNDO    = 20;
+const CTRL_SIZE   = 28; // row-controls width = col-controls height (fixed in CSS)
+const BB_MARGIN   = 12; // equal visible margin on each side of grid cells (default)
 
 // ── State ────────────────────────────────────────────────
 let state = {
@@ -27,7 +29,7 @@ let state = {
   printOrientation:       'landscape',
   textScale:              1,
   hideEmptyDesksOnPrint:  false,
-  blackboardInset:        { before: 0, after: 0 }
+  blackboardInset:        null
 };
 
 const undoStack = [];
@@ -584,11 +586,15 @@ function renderGroupBackgrounds(container) {
 
 const MIN_BB_SIZE = 40;
 
+function defaultBlackboardInset() {
+  return { before: CTRL_SIZE + BB_MARGIN, after: BB_MARGIN };
+}
+
 function syncBlackboard() {
-  const bb     = document.getElementById('blackboard');
-  const cls    = document.getElementById('classroom');
-  const pos    = state.blackboardPosition || 'top';
-  const inset  = state.blackboardInset || { before: 0, after: 0 };
+  const bb    = document.getElementById('blackboard');
+  const cls   = document.getElementById('classroom');
+  const pos   = state.blackboardPosition || 'top';
+  const inset = state.blackboardInset ?? defaultBlackboardInset();
 
   cls.classList.remove('bb-top', 'bb-bottom', 'bb-left', 'bb-right');
   cls.classList.add('bb-' + pos);
@@ -630,9 +636,22 @@ function setupBlackboardHandles(pos) {
 
   const isHoriz = pos === 'top' || pos === 'bottom';
 
+  // Add reset button
+  const resetBtn = document.createElement('button');
+  resetBtn.id = 'bb-reset';
+  resetBtn.title = 'Tilbakestill tavle';
+  resetBtn.textContent = '↺';
+  resetBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    state.blackboardInset = null;
+    syncBlackboard();
+  });
+  bb.appendChild(resetBtn);
+
   function makeDragHandler(isBefore) {
     return function(e) {
       e.preventDefault();
+      if (!state.blackboardInset) state.blackboardInset = defaultBlackboardInset();
       const gridDim   = isHoriz ? state.gridCols * CELL_STRIDE - CELL_GAP
                                 : state.gridRows * CELL_STRIDE - CELL_GAP;
       const startPos  = isHoriz ? e.clientX : e.clientY;
@@ -1128,7 +1147,7 @@ function newClass() {
     printOrientation:      'landscape',
     textScale:             1,
     hideEmptyDesksOnPrint: false,
-    blackboardInset:       { before: 0, after: 0 }
+    blackboardInset:       null
   };
   undoStack.length = 0;
   moveMode  = null;
@@ -1316,7 +1335,7 @@ async function exportPNG() {
   exportStyle.textContent = `
     .desk-locked::after { display: none !important; }
     #row-controls, #col-controls { display: none !important; }
-    .bb-handle { display: none !important; }
+    .bb-handle, #bb-reset { display: none !important; }
     ${state.hideEmptyDesksOnPrint ? '.desk-empty { visibility: hidden !important; }' : ''}
   `;
   document.head.appendChild(exportStyle);
@@ -1351,7 +1370,10 @@ function mergeStateDefaults(parsed) {
   if (parsed.printOrientation === undefined) parsed.printOrientation = 'landscape';
   if (parsed.textScale === undefined)        parsed.textScale        = 1;
   if (parsed.hideEmptyDesksOnPrint === undefined) parsed.hideEmptyDesksOnPrint = false;
-  if (!parsed.blackboardInset) parsed.blackboardInset = { before: 0, after: 0 };
+  if (!parsed.blackboardInset ||
+      (parsed.blackboardInset.before === 0 && parsed.blackboardInset.after === 0)) {
+    parsed.blackboardInset = null;
+  }
   if (parsed.desks) {
     parsed.desks.forEach(d => {
       if (d.locked === undefined) d.locked = false;
@@ -1427,7 +1449,7 @@ function setupEventListeners() {
 
   document.getElementById('blackboard-position').addEventListener('change', e => {
     state.blackboardPosition = e.target.value;
-    state.blackboardInset = { before: 0, after: 0 };
+    state.blackboardInset = null;
     renderClassroom();
   });
 

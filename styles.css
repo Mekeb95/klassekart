@@ -500,6 +500,32 @@ kbd {
 #classroom.bb-left .bb-handle-after,
 #classroom.bb-right .bb-handle-after  { bottom: 0; }
 
+/* Reset button */
+#bb-reset {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  border-radius: 50%;
+  color: rgba(255,255,255,0.75);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 6;
+  padding: 0;
+}
+#blackboard:hover #bb-reset { opacity: 1; }
+#bb-reset:hover { background: rgba(255,255,255,0.3); color: #fff; }
+
 /* Visual indicator dot on hover */
 .bb-handle::after {
   content: '';
@@ -834,4 +860,5 @@ kbd {
   .stats-banner { display: none !important; }
   .dup-warning { display: none !important; }
   .bb-handle { display: none !important; }
+  #bb-reset  { display: none !important; }
 }
