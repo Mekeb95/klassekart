@@ -23,9 +23,10 @@ let state = {
   teacherDesk:         null, // {col, row} or null
   desks:               [],   // [{id, col, row, groupId, studentName, locked, size}]
   groups:              [],   // [{id, deskIds:[...]}]
-  printFormat:         'A4',
-  printOrientation:    'landscape',
-  textScale:           1
+  printFormat:            'A4',
+  printOrientation:       'landscape',
+  textScale:              1,
+  hideEmptyDesksOnPrint:  false
 };
 
 const undoStack = [];
@@ -270,7 +271,9 @@ function updatePrintPageStyle() {
   }
   const fmt = state.printFormat || 'A4';
   const ori = state.printOrientation || 'landscape';
-  style.textContent = `@media print { @page { size: ${fmt} ${ori}; margin: 10mm; } }`;
+  let css = `@media print { @page { size: ${fmt} ${ori}; margin: 10mm; } }`;
+  if (state.hideEmptyDesksOnPrint) css += ' @media print { .desk-empty { visibility: hidden !important; } }';
+  style.textContent = css;
 }
 
 // ── Render helpers ────────────────────────────────────────
@@ -739,6 +742,8 @@ function renderAll() {
   if (pfEl) pfEl.value = state.printFormat || 'A4';
   const poEl = document.getElementById('print-orientation');
   if (poEl) poEl.value = state.printOrientation || 'landscape';
+  const heEl = document.getElementById('hide-empty-desks');
+  if (heEl) heEl.checked = !!state.hideEmptyDesksOnPrint;
   updatePrintPageStyle();
 
   updateStudentCount();
@@ -1230,6 +1235,7 @@ async function exportPNG() {
   exportStyle.textContent = `
     .desk-locked::after { display: none !important; }
     #row-controls, #col-controls { display: none !important; }
+    ${state.hideEmptyDesksOnPrint ? '.desk-empty { visibility: hidden !important; }' : ''}
   `;
   document.head.appendChild(exportStyle);
 
@@ -1262,6 +1268,7 @@ function mergeStateDefaults(parsed) {
   if (parsed.printFormat === undefined)      parsed.printFormat      = 'A4';
   if (parsed.printOrientation === undefined) parsed.printOrientation = 'landscape';
   if (parsed.textScale === undefined)        parsed.textScale        = 1;
+  if (parsed.hideEmptyDesksOnPrint === undefined) parsed.hideEmptyDesksOnPrint = false;
   if (parsed.desks) {
     parsed.desks.forEach(d => {
       if (d.locked === undefined) d.locked = false;
@@ -1409,12 +1416,21 @@ function setupEventListeners() {
     state.printOrientation = e.target.value;
     updatePrintPageStyle();
   });
+  document.getElementById('hide-empty-desks').addEventListener('change', e => {
+    state.hideEmptyDesksOnPrint = e.target.checked;
+    updatePrintPageStyle();
+  });
 
   setupContextMenuHandlers();
 
-  // Cancel move mode with Escape
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && moveMode) exitMoveMode();
+    if (e.ctrlKey && e.key === 'z' &&
+        e.target.tagName !== 'INPUT' &&
+        e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      undo();
+    }
   });
 }
 

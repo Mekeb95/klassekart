@@ -10,13 +10,16 @@ Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassek
 
 ### Elever og oppsett
 - Skriv inn elevnavn (ett per linje) og velg antall pulter
+- **Lim inn fra Excel/Sheets** via knapp — importerer automatisk fra utklippstavlen
 - Velg gruppestørrelse: enkeltpulter, 2 og 2, 3 og 3 eller 4 og 4
-- Juster antall kolonner og rader i klasserommet
+- Juster antall kolonner og rader med **+/−-knapper**
 - Velg plassering av tavlen: øverst, nederst, venstre eller høyre side
+- Juster tekststørrelse på pultene med skyveknapp
 
-### Randomisering
+### Randomisering og angring
 - Klikk **Randomiser** for å fordele elevene tilfeldig på pultene
-- Sett opp **utelukk naboskap**-regler for elever som ikke bør sitte ved siden av hverandre — randomiseringsalgoritmen respekterer disse
+- **Ctrl+Z** (eller **↩ Angre**-knapp) angrer siste endring — opp til 20 steg bakover
+- Sett opp regler for **Skal ikke sitte sammen** — randomiseringsalgoritmen respekterer disse
 - **Låste pulter** hoppes over ved randomisering, slik at enkeltelevers faste plass bevares
 
 ### Interaktiv redigering
@@ -27,18 +30,26 @@ Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassek
   - Rediger navn
   - Gjør pult bred (dobbel bredde)
   - Fjern elev fra pult
-- **Angre**-knapp for å gå tilbake til forrige tilstand (inntil 20 steg)
+  - Fjern lærerpult
 
 ### Lærerpult
 - Legg til en egen lærerpult som kan dras fritt i klasserommet
 
+### Statistikkbanner
+- Viser løpende oversikt over antall låste, plasserte og tomme pulter
+
+### Duplikatoppdagelse
+- Advarer automatisk dersom samme elevnavn er skrevet inn mer enn én gang
+
 ### Lagring
 - **Lagre flere kart** med navn direkte i nettleseren (localStorage)
-- **Elevlister** kan lagres og lastes inn separat, uavhengig av selve kartet
+- **Elevlister** kan lagres og lastes inn separat under «Lagrede lister»
 - **Eksporter/importer** som JSON-fil for deling mellom enheter
 
 ### Eksport og utskrift
-- **Ctrl+P** skriver ut klassekartet i A4 liggende format — kun klasserommet vises, med klassenavn og dato øverst
+- Velg papirformat (**A4/A3**) og retning (**Liggende/Stående**) før utskrift
+- **Skjul tomme pulter** ved utskrift/eksport via avkrysningsboks
+- **Ctrl+P** skriver ut klassekartet med klassenavn og dato øverst
 - **Eksporter som PNG** for å lagre klassekartet som bilde
 
 ---
@@ -50,4 +61,3 @@ Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassek
 - Data lagres lokalt i nettleseren, ingenting sendes til server
 
 ---
-
