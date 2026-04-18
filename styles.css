@@ -291,7 +291,7 @@ details[open] .details-summary::before { transform: rotate(90deg); }
   font-family: inherit;
   background: #fff;
 }
-#saved-maps:focus { outline: none; border-color: #888; }
+#saved-maps:focus, #saved-lists:focus { outline: none; border-color: #888; }
 
 /* Buttons */
 .btn-primary {

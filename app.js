@@ -29,10 +29,9 @@ let state = {
 };
 
 const undoStack = [];
-let dragDeskId    = null;
-let ctxDeskId     = null;
-let ctxIsTeacher  = false;
-let moveMode      = null; // { type: 'row'|'col', index: number }
+let dragDeskId = null;
+let ctxDeskId  = null;
+let moveMode   = null; // { type: 'row'|'col', index: number }
 
 // ── Utilities ─────────────────────────────────────────────
 function cellToPos(col, row) {
@@ -295,7 +294,7 @@ function renderStatsBanner() {
   if (state.desks.length === 0) { banner.classList.remove('visible'); return; }
   const locked   = state.desks.filter(d => d.locked).length;
   const assigned = state.desks.filter(d => d.studentName && !d.locked).length;
-  const empty    = state.desks.filter(d => !d.studentName).length;
+  const empty    = state.desks.filter(d => !d.studentName && !d.locked).length;
   banner.textContent = '';
   [
     ['🔒', locked,   'låst'],
@@ -430,6 +429,9 @@ function deleteAxis(axis, index) {
   }
 
   state[dimKey] = Math.max(1, state[dimKey] - 1);
+  // Clamp any desks that ended up beyond the new grid boundary (board-at-bottom/right edge case)
+  const maxVal = state[dimKey];
+  state.desks.forEach(d => { if (d[axis] > maxVal) d[axis] = maxVal; });
   document.getElementById('desk-count').value = state.deskCount;
   renderAll();
   const base = removedCount > 0
@@ -933,8 +935,7 @@ function initDragAndDrop(container) {
 
 // ── Context menu ──────────────────────────────────────────
 function showContextMenu(e, deskId, isTeacher) {
-  ctxDeskId    = deskId;
-  ctxIsTeacher = isTeacher;
+  ctxDeskId = deskId;
 
   const deskObj = isTeacher ? null : state.desks.find(d => d.id === deskId);
   const menu    = document.getElementById('context-menu');
@@ -1044,6 +1045,9 @@ function newClass() {
     textScale:        1
   };
   undoStack.length = 0;
+  moveMode  = null;
+  dragDeskId = null;
+  hideContextMenu();
   document.getElementById('dup-warning').style.display = 'none';
   rebuildDesks(false);
   renderAll();
@@ -1241,9 +1245,8 @@ async function exportPNG() {
     a.download = safeName(state.className) + '.png';
     a.href     = canvas.toDataURL('image/png');
     a.click();
-  } catch (err) {
+  } catch {
     showToast('Kunne ikke eksportere bilde');
-    console.error(err);
   } finally {
     exportStyle.remove();
   }
