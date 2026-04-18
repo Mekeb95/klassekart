@@ -169,6 +169,7 @@ function rebuildDesks(preserveNames) {
       groupId,
       studentName: (oldDesks[i] && oldDesks[i].studentName) || null,
       locked:      (oldDesks[i] && oldDesks[i].locked)      || false,
+      marked:      (oldDesks[i] && oldDesks[i].marked)      || false,
       size:        (oldDesks[i] && oldDesks[i].size)        || 1
     });
   }
@@ -232,8 +233,8 @@ function randomizeSeating() {
     state.hasRandomized = true;
   }
 
-  const locked        = state.desks.filter(d => d.locked);
-  const unlocked      = state.desks.filter(d => !d.locked);
+  const locked        = state.desks.filter(d => d.locked || d.marked);
+  const unlocked      = state.desks.filter(d => !d.locked && !d.marked);
   const lockedNames   = new Set(locked.map(d => d.studentName).filter(Boolean));
   const available     = state.students.filter(s => !lockedNames.has(s));
 
@@ -318,13 +319,16 @@ function renderStatsBanner() {
   if (state.desks.length === 0) { banner.classList.remove('visible'); return; }
   const locked   = state.desks.filter(d => d.locked).length;
   const assigned = state.desks.filter(d => d.studentName && !d.locked).length;
-  const empty    = state.desks.filter(d => !d.studentName && !d.locked).length;
+  const marked   = state.desks.filter(d => d.marked && !d.studentName && !d.locked).length;
+  const empty    = state.desks.filter(d => !d.studentName && !d.locked && !d.marked).length;
   banner.textContent = '';
-  [
+  const entries = [
     ['🔒', locked,   'låst'],
     ['🎲', assigned, 'plassert'],
+    ...(marked > 0 ? [['📦', marked, 'markert']] : []),
     ['⬜', empty,    'tom' + (empty !== 1 ? 'me' : '')]
-  ].forEach(([icon, count, label]) => {
+  ];
+  entries.forEach(([icon, count, label]) => {
     const span = document.createElement('span');
     span.textContent = `${icon} ${count} ${label}`;
     banner.appendChild(span);
@@ -339,7 +343,7 @@ function renderMismatchWarning() {
   ol.textContent = '';
 
   const unassigned  = studentsWithoutDesk();
-  const emptyDesks  = state.desks.filter(d => !d.studentName && !d.locked).length;
+  const emptyDesks  = state.desks.filter(d => !d.studentName && !d.locked && !d.marked).length;
 
   if (unassigned.length > 0) {
     // Some students have no desk
@@ -407,7 +411,7 @@ function fixMissingDesks() {
 function removeExcessDesks() {
   pushUndo();
   const before = state.desks.length;
-  state.desks   = state.desks.filter(d => d.studentName || d.locked);
+  state.desks   = state.desks.filter(d => d.studentName || d.locked || d.marked);
   const removed = before - state.desks.length;
   state.deskCount = state.desks.length;
   document.getElementById('desk-count').value = state.deskCount;
@@ -729,8 +733,9 @@ function createDeskElement(desk) {
   const el         = document.createElement('div');
   const isEmpty    = !desk.studentName;
   let cls          = 'desk';
-  if (isEmpty)      cls += ' desk-empty';
-  if (desk.locked)  cls += ' desk-locked';
+  if (isEmpty && !desk.marked) cls += ' desk-empty';
+  if (desk.locked)             cls += ' desk-locked';
+  if (desk.marked && isEmpty)  cls += ' desk-marked';
   if (desk.size === 2) cls += ' desk-wide';
   el.className     = cls;
   el.id            = 'desk-el-' + desk.id;
@@ -1049,12 +1054,15 @@ function showContextMenu(e, deskId, isTeacher) {
   document.getElementById('ctx-size').style.display           = isTeacher ? 'none' : '';
   document.getElementById('ctx-remove-student').style.display = (isTeacher || !deskObj?.studentName) ? 'none' : '';
   document.getElementById('ctx-remove-teacher').style.display = isTeacher ? '' : 'none';
+  document.getElementById('ctx-mark').style.display           = (!isTeacher && !deskObj?.studentName) ? '' : 'none';
 
   if (deskObj) {
     document.getElementById('ctx-lock').textContent =
       deskObj.locked ? '🔓 Lås opp' : '🔒 Lås pult';
     document.getElementById('ctx-size').textContent =
       deskObj.size === 2 ? '↔️ Gjør smal' : '↔️ Gjør bred';
+    document.getElementById('ctx-mark').textContent =
+      deskObj.marked ? '📦 Fjern tommerking' : '📦 Merk som tom pult';
   }
 
   // Position menu — show first to measure, then clamp to viewport
@@ -1105,6 +1113,17 @@ function setupContextMenuHandlers() {
     desk.size = desk.size === 2 ? 1 : 2;
     hideContextMenu();
     renderClassroom();
+  });
+
+  document.getElementById('ctx-mark').addEventListener('click', () => {
+    const desk = state.desks.find(d => d.id === ctxDeskId);
+    if (!desk) return;
+    pushUndo();
+    desk.marked = !desk.marked;
+    hideContextMenu();
+    renderClassroom();
+    renderMismatchWarning();
+    renderStatsBanner();
   });
 
   document.getElementById('ctx-remove-student').addEventListener('click', () => {
@@ -1377,6 +1396,7 @@ function mergeStateDefaults(parsed) {
   if (parsed.desks) {
     parsed.desks.forEach(d => {
       if (d.locked === undefined) d.locked = false;
+      if (d.marked === undefined) d.marked = false;
       if (!d.size)                d.size   = 1;
     });
   }
