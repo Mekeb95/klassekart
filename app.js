@@ -316,7 +316,7 @@ function renderMismatchWarning() {
   ol.textContent = '';
 
   const unassigned  = studentsWithoutDesk();
-  const emptyDesks  = state.desks.filter(d => !d.studentName).length;
+  const emptyDesks  = state.desks.filter(d => !d.studentName && !d.locked).length;
 
   if (unassigned.length > 0) {
     // Some students have no desk
