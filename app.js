@@ -69,6 +69,20 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+function syncDupWarning() {
+  const names  = document.getElementById('students-textarea').value
+    .split('\n').map(s => s.trim()).filter(Boolean);
+  const dups   = detectDuplicates(names);
+  const warnEl = document.getElementById('dup-warning');
+  if (dups.length > 0) {
+    warnEl.textContent   = '⚠ Duplikat: ' + dups.join(', ');
+    warnEl.style.display = 'block';
+  } else {
+    warnEl.style.display = 'none';
+  }
+  return dups;
+}
+
 // Returns names that appear more than once in the array
 function detectDuplicates(names) {
   const seen = new Set();
@@ -199,6 +213,10 @@ function computeAutoLayout(deskCount, groupSize) {
 
 // ── Randomize ─────────────────────────────────────────────
 function randomizeSeating() {
+  if (syncDupWarning().length > 0) {
+    showToast('Fjern duplikatnavn først');
+    return;
+  }
   pushUndo();
 
   // First-time randomization: auto-compute an optimal grid layout
@@ -725,6 +743,7 @@ function updatePrintHeader() {
 function renderAll() {
   document.getElementById('class-name').value        = state.className;
   document.getElementById('students-textarea').value = state.students.join('\n');
+  syncDupWarning();
   document.getElementById('desk-count').value        = state.deskCount;
   document.getElementById('group-size').value        = state.groupSize;
   updateGridDisplay();
@@ -1300,15 +1319,8 @@ function setupEventListeners() {
   });
 
   document.getElementById('students-textarea').addEventListener('input', e => {
-    const names  = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
-    const dups   = detectDuplicates(names);
-    const warnEl = document.getElementById('dup-warning');
-    if (dups.length > 0) {
-      warnEl.textContent   = '⚠ Duplikat: ' + dups.join(', ');
-      warnEl.style.display = 'block';
-    } else {
-      warnEl.style.display = 'none';
-    }
+    const names = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
+    syncDupWarning();
     state.students = [...new Set(names)];
     updateStudentCount();
     updateDatalist();
