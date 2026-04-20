@@ -1425,9 +1425,27 @@ function setupEventListeners() {
   });
 
   document.getElementById('students-textarea').addEventListener('input', e => {
-    const names = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
+    const newNames = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
     syncDupWarning();
-    state.students = [...new Set(names)];
+
+    // Rename detection: exactly one name changed → follow it to assigned desks
+    const removed = state.students.filter(n => !newNames.includes(n));
+    const added   = newNames.filter(n => !state.students.includes(n));
+    if (removed.length === 1 && added.length === 1) {
+      const [oldName, newName] = [removed[0], added[0]];
+      state.desks.forEach(d => {
+        if (d.studentName === oldName) {
+          d.studentName = newName;
+          const el = document.getElementById('desk-el-' + d.id);
+          if (el) {
+            el.textContent   = newName;
+            el.style.fontSize = deskFontSize(newName);
+          }
+        }
+      });
+    }
+
+    state.students = [...new Set(newNames)];
     updateStudentCount();
     updateDatalist();
     renderMismatchWarning();
