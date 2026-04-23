@@ -16,21 +16,63 @@ body {
 #sidebar-left,
 #sidebar-right {
   flex-shrink: 0;
+  min-width: 0;
   background: #fff;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 16px;
+  transition: width 0.2s ease, padding 0.2s ease, border-color 0.2s ease;
 }
 
 #sidebar-left {
   width: 270px;
   border-right: 1px solid #ddd;
+  overflow-y: auto;
 }
 
 #sidebar-right {
   width: 240px;
   border-left: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+#sidebar-left.collapsed {
+  width: 0;
+  padding: 0;
+  border-right-color: transparent;
+}
+
+#sidebar-right.collapsed {
+  width: 0;
+  padding: 0;
+  border-left-color: transparent;
+}
+
+/* ── Sidebar collapse tabs ────────────────────────────── */
+.sidebar-tab {
+  flex-shrink: 0;
+  width: 14px;
+  align-self: stretch;
+  background: #f5f5f5;
+  border: none;
+  border-left: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
+  cursor: pointer;
+  color: #bbb;
+  font-size: 9px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: background 0.12s, color 0.12s;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.1em;
+}
+.sidebar-tab:hover {
+  background: #e8e8e8;
+  color: #555;
 }
 
 #sidebar-header {
@@ -817,7 +859,7 @@ kbd {
 
   body { display: block; background: #fff; overflow: visible; height: auto; }
 
-  #sidebar-left, #sidebar-right { display: none !important; }
+  #sidebar-left, #sidebar-right, .sidebar-tab { display: none !important; }
   #context-menu { display: none !important; }
 
   #classroom-wrapper {

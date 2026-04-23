@@ -1354,7 +1354,7 @@ async function exportPNG() {
   exportStyle.textContent = `
     .desk-locked::after { display: none !important; }
     #row-controls, #col-controls { display: none !important; }
-    .bb-handle, #bb-reset { display: none !important; }
+    .bb-handle, #bb-reset, .sidebar-tab { display: none !important; }
     ${state.hideEmptyDesksOnPrint ? '.desk-empty { visibility: hidden !important; }' : ''}
   `;
   document.head.appendChild(exportStyle);
@@ -1559,6 +1559,22 @@ function setupEventListeners() {
   });
 
   setupContextMenuHandlers();
+
+  // Sidebar collapse tabs
+  function updateSidebarTabs() {
+    const lc = document.getElementById('sidebar-left').classList.contains('collapsed');
+    const rc = document.getElementById('sidebar-right').classList.contains('collapsed');
+    document.getElementById('tab-left').textContent  = lc ? '›' : '‹';
+    document.getElementById('tab-right').textContent = rc ? '‹' : '›';
+  }
+  document.getElementById('tab-left').addEventListener('click', () => {
+    document.getElementById('sidebar-left').classList.toggle('collapsed');
+    updateSidebarTabs();
+  });
+  document.getElementById('tab-right').addEventListener('click', () => {
+    document.getElementById('sidebar-right').classList.toggle('collapsed');
+    updateSidebarTabs();
+  });
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && moveMode) exitMoveMode();
