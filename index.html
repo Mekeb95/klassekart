@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Klassekart</title>
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
 
@@ -19,7 +19,8 @@
     <div class="ctx-item ctx-danger" id="ctx-remove-teacher">🗑️ Fjern lærerpult</div>
   </div>
 
-  <aside id="sidebar">
+  <!-- ── Venstre sidebar: Elev ─────────────────────────── -->
+  <aside id="sidebar-left">
     <div id="sidebar-header">
       <h1>Klassekart</h1>
       <button id="btn-new-class" class="btn-new-class" title="Start ny klasse">Ny klasse</button>
@@ -60,9 +61,48 @@
       </details>
     </div>
 
-    <!-- Mismatch-varsel (mellom Elever og Oppsett) -->
+    <!-- Mismatch-varsel -->
     <div id="mismatch-warning"></div>
     <div id="overflow-list"></div>
+
+    <!-- Skal ikke sitte sammen -->
+    <div class="section">
+      <label class="section-label">Skal ikke sitte sammen</label>
+      <datalist id="students-datalist"></datalist>
+      <div class="sub-row">
+        <input type="text" id="excl-a" list="students-datalist" class="input-sm" placeholder="Elev A">
+        <span class="excl-og">og</span>
+        <input type="text" id="excl-b" list="students-datalist" class="input-sm" placeholder="Elev B">
+        <button id="btn-add-excl" class="btn-sm">+</button>
+      </div>
+      <ul id="exclusion-list"></ul>
+    </div>
+  </aside>
+
+  <!-- ── Klasserom ──────────────────────────────────────── -->
+  <main id="classroom-wrapper">
+    <div id="print-header">
+      <strong id="ph-class"></strong>
+      <span id="ph-date"></span>
+    </div>
+    <div id="stats-banner" class="stats-banner"></div>
+    <div id="classroom">
+      <div id="blackboard">
+        <span id="blackboard-label">TAVLE</span>
+        <span id="classroom-title"></span>
+      </div>
+      <div id="grid-area">
+        <div id="col-controls"></div>
+        <div id="grid-row-wrap">
+          <div id="row-controls"></div>
+          <div id="grid-container"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ── Høyre sidebar: Kart ───────────────────────────── -->
+  <aside id="sidebar-right">
 
     <!-- Oppsett -->
     <div class="section">
@@ -113,19 +153,6 @@
       <button id="btn-teacher-desk" class="btn-secondary mt-6">Legg til lærerpult</button>
     </div>
 
-    <!-- Utelukk naboskap -->
-    <div class="section">
-      <label class="section-label">Skal ikke sitte sammen</label>
-      <datalist id="students-datalist"></datalist>
-      <div class="sub-row">
-        <input type="text" id="excl-a" list="students-datalist" class="input-sm" placeholder="Elev A">
-        <span class="excl-og">og</span>
-        <input type="text" id="excl-b" list="students-datalist" class="input-sm" placeholder="Elev B">
-        <button id="btn-add-excl" class="btn-sm">+</button>
-      </div>
-      <ul id="exclusion-list"></ul>
-    </div>
-
     <!-- Lagrede kart -->
     <div class="section">
       <label class="section-label">Lagrede kart</label>
@@ -167,29 +194,8 @@
     </div>
   </aside>
 
-  <main id="classroom-wrapper">
-    <div id="print-header">
-      <strong id="ph-class"></strong>
-      <span id="ph-date"></span>
-    </div>
-    <div id="stats-banner" class="stats-banner"></div>
-    <div id="classroom">
-      <div id="blackboard">
-        <span id="blackboard-label">TAVLE</span>
-        <span id="classroom-title"></span>
-      </div>
-      <div id="grid-area">
-        <div id="col-controls"></div>
-        <div id="grid-row-wrap">
-          <div id="row-controls"></div>
-          <div id="grid-container"></div>
-        </div>
-      </div>
-    </div>
-  </main>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

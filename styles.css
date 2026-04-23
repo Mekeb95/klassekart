@@ -12,16 +12,25 @@ body {
   overflow: hidden;
 }
 
-/* ── Sidebar ──────────────────────────────────────────── */
-#sidebar {
-  width: 270px;
+/* ── Sidebars ─────────────────────────────────────────── */
+#sidebar-left,
+#sidebar-right {
   flex-shrink: 0;
   background: #fff;
-  border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   padding: 16px;
+}
+
+#sidebar-left {
+  width: 270px;
+  border-right: 1px solid #ddd;
+}
+
+#sidebar-right {
+  width: 240px;
+  border-left: 1px solid #ddd;
 }
 
 #sidebar-header {
@@ -808,7 +817,7 @@ kbd {
 
   body { display: block; background: #fff; overflow: visible; height: auto; }
 
-  #sidebar { display: none !important; }
+  #sidebar-left, #sidebar-right { display: none !important; }
   #context-menu { display: none !important; }
 
   #classroom-wrapper {
