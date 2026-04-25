@@ -284,6 +284,9 @@ function updateGridDisplay() {
 }
 
 // ── Print page style (dynamic @page) ─────────────────────
+const VALID_PRINT_FORMATS      = new Set(['A4', 'A3']);
+const VALID_PRINT_ORIENTATIONS = new Set(['landscape', 'portrait']);
+
 function updatePrintPageStyle() {
   let style = document.getElementById('print-page-style');
   if (!style) {
@@ -291,8 +294,9 @@ function updatePrintPageStyle() {
     style.id = 'print-page-style';
     document.head.appendChild(style);
   }
-  const fmt = state.printFormat || 'A4';
-  const ori = state.printOrientation || 'landscape';
+  // Allowlist-validate to prevent CSS injection via imported JSON
+  const fmt = VALID_PRINT_FORMATS.has(state.printFormat)           ? state.printFormat      : 'A4';
+  const ori = VALID_PRINT_ORIENTATIONS.has(state.printOrientation) ? state.printOrientation : 'landscape';
   let css = `@media print { @page { size: ${fmt} ${ori}; margin: 10mm; } }`;
   if (state.hideEmptyDesksOnPrint) css += ' @media print { .desk-empty { visibility: hidden !important; } }';
   style.textContent = css;
@@ -1275,6 +1279,21 @@ function deleteFromLocalStorage() {
   showToast(`"${name}" slettet`);
 }
 
+function clearAllData() {
+  if (!confirm('Dette sletter alle lagrede kart, elevlister og siste økt permanent.\nEr du sikker?')) return;
+  const keysToDelete = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith(LS_MAP) || key.startsWith(LS_LIST) || key === 'klassekart_last') {
+      keysToDelete.push(key);
+    }
+  }
+  keysToDelete.forEach(key => localStorage.removeItem(key));
+  renderSavedMaps();
+  renderSavedLists();
+  showToast(`${keysToDelete.length} element(er) slettet fra nettleseren`);
+}
+
 // ── Persistence: student lists ────────────────────────────
 function saveList() {
   const name = document.getElementById('list-name-input').value.trim();
@@ -1499,6 +1518,7 @@ function setupEventListeners() {
   document.getElementById('btn-save').addEventListener('click', saveToLocalStorage);
   document.getElementById('btn-load').addEventListener('click', loadFromLocalStorage);
   document.getElementById('btn-delete').addEventListener('click', deleteFromLocalStorage);
+  document.getElementById('btn-clear-data').addEventListener('click', clearAllData);
 
   // Student lists
   document.getElementById('btn-save-list').addEventListener('click', saveList);

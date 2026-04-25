@@ -422,6 +422,13 @@ details[open] .details-summary::before { transform: rotate(90deg); }
 }
 .btn-trim-desks:hover { background: #333 !important; }
 
+.privacy-note {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.5;
+  margin-bottom: 2px;
+}
+
 .sidebar-footer {
   margin-top: auto;
   padding-top: 16px;

@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; font-src 'self'; form-action 'none'; base-uri 'self';">
   <title>Klassekart</title>
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 
@@ -193,13 +195,22 @@
       <input type="file" id="import-file" accept=".json" style="display:none">
     </div>
 
+    <!-- Personvern / GDPR -->
+    <div class="section">
+      <label class="section-label">Personvern</label>
+      <p class="privacy-note">Elevdata lagres kun lokalt i din nettleser og sendes aldri til noen server.</p>
+      <button id="btn-clear-data" class="btn-secondary btn-danger mt-6">🗑️ Slett all lokal data</button>
+    </div>
+
     <div class="sidebar-footer">
       Trykk <kbd>Ctrl+P</kbd> for å skrive ut
     </div>
   </aside>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
-    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="app.js?v=15"></script>
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+    integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
