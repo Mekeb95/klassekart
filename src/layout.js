@@ -57,7 +57,24 @@ export function computeAutoLayout(deskCount, groupSize) {
   };
 }
 
-/** Diagonals count as neighbours — sitting corner to corner is still "sammen". */
+/** Columns a desk physically covers: [first, last]. A wide desk covers two. */
+function colSpan(desk) {
+  return [desk.col, desk.col + (desk.size === 2 ? 1 : 0)];
+}
+
+/**
+ * Diagonals count as neighbours — sitting corner to corner is still "sammen".
+ *
+ * Comparing desk.col alone treated a wide desk as if it stood only on its
+ * left-hand cell, so a student sitting against its right half looked two
+ * columns away and a "skal ikke sitte sammen" rule was silently ignored.
+ * Measuring the gap between footprints handles both widths identically.
+ */
 export function areNeighbors(d1, d2) {
-  return Math.abs(d1.col - d2.col) <= 1 && Math.abs(d1.row - d2.row) <= 1;
+  if (Math.abs(d1.row - d2.row) > 1) return false;
+  const [aFirst, aLast] = colSpan(d1);
+  const [bFirst, bLast] = colSpan(d2);
+  // 0 when the footprints touch or overlap, otherwise the columns between them.
+  const gap = Math.max(bFirst - aLast, aFirst - bLast, 0);
+  return gap <= 1;
 }

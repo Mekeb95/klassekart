@@ -25,6 +25,24 @@ export const LS_MAP  = 'klassekart_'; // prefix for saved seating charts
 export const LS_LIST = 'kl_liste_';   // prefix for saved student lists
 export const LS_LAST = 'klassekart_last';
 
+// ── Paper ────────────────────────────────────────────────
+export const MM_TO_PX        = 96 / 25.4;
+export const PAGE_MARGIN_MM  = 10; // must match the @page margin in updatePrintPageStyle
+export const PAGE_SIZES_MM   = { A4: [210, 297], A3: [297, 420] }; // [short, long]
+
+// Height of #print-header plus its bottom margin, in print layout. Only
+// measurable while printing, so this is the fallback when we can't measure —
+// keep it in step with the #print-header rule in styles.css.
+export const PRINT_HEADER_PX = 61;
+
+// Never shrink a chart into illegibility; below this we let it overflow instead.
+export const MIN_PRINT_ZOOM  = 0.35;
+
+// Scaling to the exact printable width leaves no room for rounding, and
+// browsers and printer drivers disagree slightly about the usable area. A
+// couple of percent of slack is invisible but keeps a chart off page two.
+export const PRINT_FIT_SLACK = 0.98;
+
 // ── Allowlists ───────────────────────────────────────────
 // Print format/orientation are interpolated into a <style> element, so they
 // must never carry arbitrary text from an imported file.

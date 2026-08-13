@@ -24,31 +24,79 @@ function syncTeacherButton() {
 // ── Rebuild ──────────────────────────────────────────────
 export function rebuildDesks(preserveNames) {
   const positions = computeLayout(state.deskCount, state.groupSize, state.gridCols);
-  const oldDesks  = preserveNames ? state.desks : [];
-  const newDesks  = [];
 
-  for (let i = 0; i < state.deskCount; i++) {
-    const old = oldDesks[i];
-    const pos = positions[i] || { col: 1, row: 1 };
-    newDesks.push({
-      id:          'd' + (i + 1),
-      col:         pos.col,
-      row:         pos.row,
-      groupId:     'g' + (Math.floor(i / state.groupSize) + 1),
-      studentName: old?.studentName ?? null,
-      locked:      old?.locked      ?? false,
-      marked:      old?.marked      ?? false,
-      size:        old?.size        ?? 1
-    });
+  // The seats the new layout offers, in layout order.
+  const slots = positions.map((pos, i) => ({
+    id:      'd' + (i + 1),
+    col:     pos.col,
+    row:     pos.row,
+    groupId: 'g' + (Math.floor(i / state.groupSize) + 1),
+    from:    null
+  }));
+
+  if (preserveNames && state.desks.length > 0) {
+    // Reading order — top to bottom, left to right — is what the teacher sees.
+    // Matching on array index instead meant that after any manual drag the list
+    // order no longer matched the seating, so changing the desk count threw
+    // names (and locks) onto unrelated seats.
+    const inReadingOrder = [...state.desks].sort((a, b) => a.row - b.row || a.col - b.col);
+    const slotByCell = new Map(slots.map(s => [`${s.col},${s.row}`, s]));
+    const placed = new Set();
+
+    // A lock means "this student keeps this seat", so honour it literally
+    // whenever the rebuilt layout still contains that seat.
+    for (const desk of inReadingOrder) {
+      if (!desk.locked) continue;
+      const slot = slotByCell.get(`${desk.col},${desk.row}`);
+      if (slot && !slot.from) {
+        slot.from = desk;
+        placed.add(desk);
+      }
+    }
+
+    // Everyone else fills the seats that are left, still in reading order.
+    const free = slots.filter(s => !s.from);
+    let next = 0;
+    for (const desk of inReadingOrder) {
+      if (placed.has(desk)) continue;
+      if (next >= free.length) break;   // fewer desks than before — drop the tail
+      free[next++].from = desk;
+    }
   }
 
-  state.desks = newDesks;
+  state.desks = slots.map(s => ({
+    id:          s.id,
+    col:         s.col,
+    row:         s.row,
+    groupId:     s.groupId,
+    studentName: s.from?.studentName ?? null,
+    locked:      s.from?.locked      ?? false,
+    marked:      s.from?.marked      ?? false,
+    size:        s.from?.size        ?? 1
+  }));
+
+  narrowUnfittableDesks();
 
   // Grow the grid if the layout needs more room than it currently has.
   const needed = calcRequiredRows(state.deskCount, state.groupSize, state.gridCols) + 1;
   if (state.gridRows < needed) {
     state.gridRows = Math.min(MAX_GRID, needed);
     updateGridDisplay();
+  }
+}
+
+/**
+ * Returns any wide desk to single width when the rebuilt layout has no room
+ * for its second cell — otherwise it would be drawn straight over a neighbour,
+ * which is exactly what toggleDeskWidth refuses to allow.
+ */
+function narrowUnfittableDesks() {
+  const occupied = new Set(state.desks.map(d => `${d.col},${d.row}`));
+  for (const desk of state.desks) {
+    if (desk.size !== 2) continue;
+    if (desk.col + 1 > state.gridCols || occupied.has(`${desk.col + 1},${desk.row}`)) {
+      desk.size = 1;
+    }
   }
 }
 

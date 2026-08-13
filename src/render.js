@@ -2,7 +2,9 @@
 
 import {
   CELL_SIZE, CELL_GAP, CELL_STRIDE, CTRL_SIZE, BB_MARGIN, MIN_BB_SIZE,
-  LS_MAP, LS_LIST, VALID_PRINT_FORMATS, VALID_PRINT_ORIENTATIONS
+  LS_MAP, LS_LIST, VALID_PRINT_FORMATS, VALID_PRINT_ORIENTATIONS,
+  MM_TO_PX, PAGE_MARGIN_MM, PAGE_SIZES_MM, PRINT_HEADER_PX, MIN_PRINT_ZOOM,
+  PRINT_FIT_SLACK
 } from './constants.js';
 import {
   state, isFreeDesk, studentsWithoutDesk, isAxisEmpty, detectDuplicates, getMoveMode
@@ -66,6 +68,77 @@ export function syncDupWarning() {
   return dups;
 }
 
+// ── Print scaling ────────────────────────────────────────
+
+/** Printable area of the chosen sheet, in CSS px. */
+function printableAreaPx() {
+  const [short, long] = PAGE_SIZES_MM[state.printFormat] || PAGE_SIZES_MM.A4;
+  const landscape = state.printOrientation === 'landscape';
+  return {
+    width:  ((landscape ? long : short) - PAGE_MARGIN_MM * 2) * MM_TO_PX,
+    height: ((landscape ? short : long) - PAGE_MARGIN_MM * 2) * MM_TO_PX
+  };
+}
+
+/**
+ * Size #classroom will occupy on paper.
+ *
+ * Computed rather than measured, because on screen the element also contains
+ * the row/column controls that print hides. With the board horizontal it spans
+ * exactly the desk grid; vertically it adds the board and the gap beside it.
+ */
+function chartPrintSize() {
+  const board = $('blackboard');
+  const gap   = parseFloat(getComputedStyle($('classroom')).gap) || 20;
+  const gridW = spanOf(state.gridCols);
+  const gridH = spanOf(state.gridRows);
+  const pos   = state.blackboardPosition || 'top';
+
+  return (pos === 'top' || pos === 'bottom')
+    ? { width: gridW, height: board.offsetHeight + gap + gridH }
+    : { width: board.offsetWidth + gap + gridW, height: gridH };
+}
+
+function printHeaderHeightPx() {
+  const el = $('print-header');
+  // Has layout only while printing; trust a real measurement when we get one.
+  if (el && el.offsetHeight > 0) {
+    return el.offsetHeight + (parseFloat(getComputedStyle(el).marginBottom) || 0);
+  }
+  return PRINT_HEADER_PX;
+}
+
+/**
+ * Sets the zoom that makes the chart fit one sheet.
+ *
+ * Uses `zoom` rather than `transform: scale()` on purpose — transform leaves
+ * the layout box at full size, so an oversized chart would still push a second
+ * page out and the auto-margin centring would work off the wrong height.
+ */
+export function updatePrintScale() {
+  const cls = $('classroom');
+  if (!cls) return;
+
+  if (!state.scaleToFitOnPrint) {
+    cls.style.setProperty('--print-zoom', '1');
+    return;
+  }
+
+  const area  = printableAreaPx();
+  const chart = chartPrintSize();
+  const availH = Math.max(1, area.height - printHeaderHeightPx());
+
+  if (chart.width <= 0 || chart.height <= 0) {
+    cls.style.setProperty('--print-zoom', '1');
+    return;
+  }
+
+  const fit = Math.min(1,
+    (area.width * PRINT_FIT_SLACK) / chart.width,
+    (availH     * PRINT_FIT_SLACK) / chart.height);
+  cls.style.setProperty('--print-zoom', String(Math.max(MIN_PRINT_ZOOM, fit)));
+}
+
 // ── Print page style ─────────────────────────────────────
 export function updatePrintPageStyle() {
   let style = $('print-page-style');
@@ -82,6 +155,7 @@ export function updatePrintPageStyle() {
     css += ' @media print { .desk-empty { visibility: hidden !important; } }';
   }
   style.textContent = css;
+  updatePrintScale();
 }
 
 // ── Stats banner ─────────────────────────────────────────
@@ -427,6 +501,7 @@ export function renderClassroom() {
 
   renderRowColControls();
   renderStatsBanner();
+  updatePrintScale();
 }
 
 // ── Saved maps / lists ───────────────────────────────────
@@ -501,6 +576,7 @@ export function renderAll() {
   $('print-format').value       = state.printFormat || 'A4';
   $('print-orientation').value  = state.printOrientation || 'landscape';
   $('hide-empty-desks').checked = !!state.hideEmptyDesksOnPrint;
+  $('scale-to-fit').checked     = state.scaleToFitOnPrint !== false;
   updatePrintPageStyle();
 
   updateStudentCount();

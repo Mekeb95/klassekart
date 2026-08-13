@@ -908,6 +908,9 @@ kbd {
     /* Row/column controls are hidden below, so the grid moves CTRL_SIZE left
        (or up). The board follows it via this offset. */
     --ctrl-shift: -28px;
+    /* Set by updatePrintScale(). zoom (not transform) so the layout box really
+       shrinks — otherwise the centring and the page count use the old size. */
+    zoom: var(--print-zoom, 1);
     box-shadow: none;
     padding: 0;
     display: flex;

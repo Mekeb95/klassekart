@@ -6,7 +6,8 @@ import { computeAutoLayout } from './layout.js';
 import {
   renderAll, renderClassroom, renderMismatchWarning, updateGridDisplay,
   updatePrintPageStyle, updatePrintHeader, updateStudentCount, updateDatalist,
-  refreshDeskFontSizes, renderExclusionList, syncDupWarning, deskFontSize
+  refreshDeskFontSizes, renderExclusionList, syncDupWarning, deskFontSize,
+  updatePrintScale
 } from './render.js';
 import { rebuildDesks, toggleTeacherDesk, nudgeGrid, exitMoveMode } from './desks.js';
 import { randomizeSeating } from './randomize.js';
@@ -178,6 +179,14 @@ function setupEventListeners() {
     state.hideEmptyDesksOnPrint = e.target.checked;
     updatePrintPageStyle();
   });
+  $('scale-to-fit').addEventListener('change', e => {
+    state.scaleToFitOnPrint = e.target.checked;
+    updatePrintScale();
+  });
+
+  // Last chance to get the zoom right — by now the print layout is settled, so
+  // the header can be measured for real instead of falling back to a constant.
+  window.addEventListener('beforeprint', updatePrintScale);
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {

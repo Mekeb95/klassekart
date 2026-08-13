@@ -48,6 +48,10 @@ Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassek
 
 ### Eksport og utskrift
 - Velg papirformat (**A4/A3**) og retning (**Liggende/Stående**) før utskrift
+- Klassekartet **midtstilles på arket** — vannrett og loddrett
+- **Tilpass til arket** (på som standard) krymper kartet så det får plass på én
+  side. Fjern haken hvis du heller vil ha full størrelse og la kartet gå over
+  flere sider
 - **Skjul tomme pulter** ved utskrift/eksport via avkrysningsboks
 - **Ctrl+P** skriver ut klassekartet med klassenavn og dato øverst
 - **Eksporter som PNG** for å lagre klassekartet som bilde
@@ -57,7 +61,6 @@ Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassek
 ## Teknisk
 
 - Ren HTML, CSS og JavaScript — ingen rammeverk, ingen byggsteg
-- Fungerer direkte i nettleseren, også uten internettilgang (etter første lasting)
 - Data lagres lokalt i nettleseren, ingenting sendes til server
 
 ### Kodestruktur

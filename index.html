@@ -8,7 +8,7 @@
   <title>Klassekart</title>
   <!-- Inline favicon: avoids a 404 on every load without adding a file. -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🪑</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
 
@@ -189,6 +189,10 @@
         <label class="input-label" for="hide-empty-desks">Skjul tomme pulter</label>
         <input type="checkbox" id="hide-empty-desks">
       </div>
+      <div class="input-row">
+        <label class="input-label" for="scale-to-fit" title="Krymper kartet så det får plass på ett ark">Tilpass til arket</label>
+        <input type="checkbox" id="scale-to-fit" checked>
+      </div>
       <div class="btn-row">
         <button id="btn-export" class="btn-secondary">JSON</button>
         <button id="btn-export-png" class="btn-secondary">PNG</button>
@@ -213,6 +217,6 @@
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
     integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="></script>
-  <script type="module" src="src/main.js?v=18"></script>
+  <script type="module" src="src/main.js?v=21"></script>
 </body>
 </html>

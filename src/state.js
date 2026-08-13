@@ -26,6 +26,7 @@ export function createInitialState() {
     printOrientation:      'landscape',
     textScale:             1,
     hideEmptyDesksOnPrint: false,
+    scaleToFitOnPrint:     true,
     blackboardInset:       null
   };
 }
@@ -169,6 +170,9 @@ export function sanitizeState(parsed) {
     : 1;
 
   next.hideEmptyDesksOnPrint = parsed.hideEmptyDesksOnPrint === true;
+  // Defaults to on, including for charts saved before the option existed —
+  // only an explicit false turns it off.
+  next.scaleToFitOnPrint = parsed.scaleToFitOnPrint !== false;
 
   // Desks: drop anything without usable coordinates, clamp the rest into the grid.
   if (Array.isArray(parsed.desks)) {
