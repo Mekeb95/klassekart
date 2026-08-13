@@ -60,4 +60,36 @@ Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassek
 - Fungerer direkte i nettleseren, også uten internettilgang (etter første lasting)
 - Data lagres lokalt i nettleseren, ingenting sendes til server
 
+### Kodestruktur
+
+JavaScript-en ligger i `src/` som ES-moduler, lastet via
+`<script type="module" src="src/main.js">`. Ingen bundler eller byggsteg —
+filene serveres som de er.
+
+| Fil | Ansvar |
+|-----|--------|
+| `constants.js` | Rutenett-geometri, grenser, lagringsnøkler, tillatte verdier |
+| `state.js` | Tilstandsobjektet, angrelager, og validering av alt som lastes inn |
+| `layout.js` | Ren geometri: cellekoordinater, autolayout, naboskap |
+| `randomize.js` | Stokking og plassering som minimerer brudd på «skal ikke sitte sammen» |
+| `render.js` | All DOM-tegning |
+| `desks.js` | Operasjoner på pulter, rader/kolonner og lærerpult |
+| `dnd.js` | Dra-og-slipp og tavlehåndtak |
+| `storage.js` | localStorage, JSON-import/eksport, PNG |
+| `ui.js` | Kontekstmeny, navneredigering, sidepaneler |
+| `main.js` | Kobler opp hendelser og starter appen |
+
+**Kjøring lokalt:** ES-moduler krever HTTP — å åpne `index.html` rett fra
+filsystemet (`file://`) blokkeres av nettleseren. Start en lokal server:
+
+```bash
+python3 -m http.server 8000     # åpne http://localhost:8000
+```
+
+GitHub Pages serverer allerede over HTTP, så den publiserte versjonen
+er upåvirket.
+
+`layout.js`, `randomize.js` og valideringen i `state.js` er rene funksjoner
+uten DOM-avhengigheter, og kan testes direkte.
+
 ---

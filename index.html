@@ -6,19 +6,21 @@
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; font-src 'self'; form-action 'none'; base-uri 'self';">
   <title>Klassekart</title>
-  <link rel="stylesheet" href="styles.css?v=16">
+  <!-- Inline favicon: avoids a 404 on every load without adding a file. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🪑</text></svg>">
+  <link rel="stylesheet" href="styles.css?v=18">
 </head>
 <body>
 
   <!-- Custom context menu (right-click on desk) -->
-  <div id="context-menu">
-    <div class="ctx-item" id="ctx-lock">🔒 Lås pult</div>
-    <div class="ctx-item" id="ctx-edit">✏️ Rediger navn</div>
-    <div class="ctx-item" id="ctx-size">↔️ Gjør bred</div>
-    <div class="ctx-sep"></div>
-    <div class="ctx-item" id="ctx-mark">📦 Merk som tom pult</div>
-    <div class="ctx-item ctx-danger" id="ctx-remove-student">🗑️ Fjern elev</div>
-    <div class="ctx-item ctx-danger" id="ctx-remove-teacher">🗑️ Fjern lærerpult</div>
+  <div id="context-menu" role="menu" aria-label="Pultvalg">
+    <div class="ctx-item" id="ctx-lock" role="menuitem" tabindex="-1">🔒 Lås pult</div>
+    <div class="ctx-item" id="ctx-edit" role="menuitem" tabindex="-1">✏️ Rediger navn</div>
+    <div class="ctx-item" id="ctx-size" role="menuitem" tabindex="-1">↔️ Gjør bred</div>
+    <div class="ctx-sep" role="separator"></div>
+    <div class="ctx-item" id="ctx-mark" role="menuitem" tabindex="-1">📦 Merk som tom pult</div>
+    <div class="ctx-item ctx-danger" id="ctx-remove-student" role="menuitem" tabindex="-1">🗑️ Fjern elev</div>
+    <div class="ctx-item ctx-danger" id="ctx-remove-teacher" role="menuitem" tabindex="-1">🗑️ Fjern lærerpult</div>
   </div>
 
   <!-- ── Venstre sidebar: Elev ─────────────────────────── -->
@@ -211,6 +213,6 @@
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
     integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="></script>
-  <script src="app.js?v=16"></script>
+  <script type="module" src="src/main.js?v=18"></script>
 </body>
 </html>

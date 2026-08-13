@@ -481,6 +481,9 @@ kbd {
 #print-header { display: none; }
 
 #classroom {
+  /* Shifts the blackboard to stay aligned with the desk grid when the
+     row/column controls are hidden (print). See syncBlackboard(). */
+  --ctrl-shift: 0px;
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
@@ -869,15 +872,27 @@ kbd {
   #sidebar-left, #sidebar-right, .sidebar-tab { display: none !important; }
   #context-menu { display: none !important; }
 
+  /* Centre the chart on the sheet, horizontally and vertically, for every
+     paper size and orientation.
+
+     100vh is the printable page area (inside the @page margin), so the wrapper
+     spans exactly one sheet whatever A4/A3 and portrait/landscape resolve to.
+     The header keeps its place at the top; `margin: auto` on the chart then
+     splits all remaining space evenly on both axes. Auto margins on the cross
+     axis also stop the flex item from stretching, so the chart keeps its own
+     width instead of filling the page. */
   #classroom-wrapper {
     padding: 0;
     background: #fff;
     overflow: visible;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
   }
 
   #print-header {
     display: flex;
+    flex: 0 0 auto;
     justify-content: space-between;
     align-items: baseline;
     font-size: 12pt;
@@ -887,10 +902,16 @@ kbd {
   }
   #print-header strong { font-size: 14pt; }
 
+  /* Must stay flex: `display: block` here silently broke the side-by-side
+     layout for a left/right blackboard, stacking the board above the desks. */
   #classroom {
+    /* Row/column controls are hidden below, so the grid moves CTRL_SIZE left
+       (or up). The board follows it via this offset. */
+    --ctrl-shift: -28px;
     box-shadow: none;
     padding: 0;
-    display: block;
+    display: flex;
+    margin: auto;
     background: #fff;
   }
 
