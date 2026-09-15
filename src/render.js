@@ -10,6 +10,11 @@ import {
   state, isFreeDesk, studentsWithoutDesk, isAxisEmpty, detectDuplicates, getMoveMode
 } from './state.js';
 import { cellToPos, deskWidth, spanOf } from './layout.js';
+import { renderGroupsAll } from './groups-view.js';
+import { renderRuleList } from './rules-view.js';
+
+// Re-exported so callers keep importing every render function from one place.
+export { renderRuleList };
 
 const $ = id => document.getElementById(id);
 
@@ -46,8 +51,22 @@ export function updateDatalist() {
   });
 }
 
+/** Which tool is showing: body class, tab state and the main button's label. */
+export function syncModeUI() {
+  const groups = state.mode === 'groups';
+  document.body.classList.toggle('mode-groups', groups);
+  document.querySelectorAll('[data-mode-tab]').forEach(tab => {
+    const on = tab.dataset.modeTab === state.mode;
+    tab.classList.toggle('active', on);
+    tab.setAttribute('aria-selected', String(on));
+  });
+  $('btn-randomize').textContent = groups ? '🎲 Trekk grupper' : '🔀 Randomiser';
+}
+
 export function updatePrintHeader() {
-  $('ph-class').textContent = state.className || 'Klassekart';
+  $('ph-class').textContent = state.mode === 'groups'
+    ? (state.className ? `${state.className} · Grupper` : 'Grupper')
+    : (state.className || 'Klassekart');
   $('ph-date').textContent  =
     new Date().toLocaleDateString('no-NO', { year: 'numeric', month: 'long', day: 'numeric' });
 }
@@ -150,8 +169,11 @@ export function updatePrintPageStyle() {
   // Allowlist-validated: these values land inside a stylesheet.
   const fmt = VALID_PRINT_FORMATS.has(state.printFormat)           ? state.printFormat      : 'A4';
   const ori = VALID_PRINT_ORIENTATIONS.has(state.printOrientation) ? state.printOrientation : 'landscape';
-  let css = `@media print { @page { size: ${fmt} ${ori}; margin: 10mm; } }`;
-  if (state.hideEmptyDesksOnPrint) {
+  // A list of groups reads best upright; the chart's own paper settings are
+  // hidden in group mode, so they don't apply there.
+  const groups = state.mode === 'groups';
+  let css = `@media print { @page { size: ${groups ? 'A4 portrait' : `${fmt} ${ori}`}; margin: 10mm; } }`;
+  if (!groups && state.hideEmptyDesksOnPrint) {
     css += ' @media print { .desk-empty { visibility: hidden !important; } }';
   }
   style.textContent = css;
@@ -502,6 +524,8 @@ export function renderClassroom() {
   renderRowColControls();
   renderStatsBanner();
   updatePrintScale();
+  // A drag or a randomise can make or mend a broken rule.
+  renderRuleList();
 }
 
 // ── Saved maps / lists ───────────────────────────────────
@@ -536,29 +560,9 @@ export function renderSavedLists() {
   renderSavedSelect('saved-lists', LS_LIST, '— Velg elevliste —');
 }
 
-// ── Exclusions ───────────────────────────────────────────
-export function renderExclusionList() {
-  const ul = $('exclusion-list');
-  ul.textContent = '';
-  state.exclusions.forEach((ex, i) => {
-    const li  = document.createElement('li');
-    const sp  = document.createElement('span');
-    sp.textContent = `${ex.a} og ${ex.b}`;
-
-    const btn = document.createElement('button');
-    btn.textContent    = '×';
-    btn.className      = 'excl-remove';
-    btn.title          = 'Fjern regel';
-    btn.dataset.action = 'remove-exclusion';
-    btn.dataset.index  = i;
-
-    li.append(sp, btn);
-    ul.appendChild(li);
-  });
-}
-
 // ── Full render ──────────────────────────────────────────
 export function renderAll() {
+  syncModeUI();
   $('class-name').value        = state.className;
   $('students-textarea').value = state.students.join('\n');
   syncDupWarning();
@@ -585,5 +589,6 @@ export function renderAll() {
   renderMismatchWarning();
   renderSavedMaps();
   renderSavedLists();
-  renderExclusionList();
+  renderRuleList();
+  renderGroupsAll();
 }

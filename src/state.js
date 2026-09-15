@@ -2,15 +2,19 @@
 
 import {
   MIN_GRID, MAX_GRID, MAX_DESK_COUNT, MAX_DESKS, MAX_UNDO,
-  MIN_TEXT_SCALE, MAX_TEXT_SCALE,
-  VALID_PRINT_FORMATS, VALID_PRINT_ORIENTATIONS, VALID_BB_POSITIONS, VALID_GROUP_SIZES
+  MIN_TEXT_SCALE, MAX_TEXT_SCALE, MAX_RULES,
+  MIN_GROUP_SIZE, MAX_GROUP_SIZE, MIN_GROUP_COUNT, MAX_GROUP_COUNT,
+  MAX_GROUP_HISTORY, MAX_ROLES, MAX_ROLE_LENGTH,
+  VALID_PRINT_FORMATS, VALID_PRINT_ORIENTATIONS, VALID_BB_POSITIONS, VALID_GROUP_SIZES,
+  VALID_MODES, VALID_RULE_TYPES, VALID_GROUP_SIZE_MODES
 } from './constants.js';
 
 // ── State shape ──────────────────────────────────────────
 // desks: [{id, col, row, groupId, studentName, locked, marked, size}]
 export function createInitialState() {
   return {
-    version:               1,
+    version:               2,
+    mode:                  'seating', // 'seating' (klassekart) | 'groups'
     className:             '',
     students:              [],
     deskCount:             24,
@@ -19,7 +23,10 @@ export function createInitialState() {
     gridRows:              6,
     blackboardPosition:    'top',
     hasRandomized:         false,
-    exclusions:            [],   // [{a: 'Name1', b: 'Name2'}]
+    rules:                 [],   // [{a, b, type: 'apart'|'together'}] — shared by both tools
+    useRulesSeating:       true,
+    useRulesGroups:        true,
+    groups:                createInitialGroups(),
     teacherDesk:           null, // {col, row} or null
     desks:                 [],
     printFormat:           'A4',
@@ -28,6 +35,21 @@ export function createInitialState() {
     hideEmptyDesksOnPrint: false,
     scaleToFitOnPrint:     true,
     blackboardInset:       null
+  };
+}
+
+export function createInitialGroups() {
+  return {
+    sizeMode:     'size',  // 'size' = elever per gruppe, 'count' = antall grupper
+    size:         4,
+    count:        6,
+    trackAbsence: false,
+    absent:       { date: '', names: [] }, // only counts on the day it was set
+    avoidRepeat:  false,
+    history:      [],      // [{date, groups: [[name]]}] — earlier days, newest first
+    rolesEnabled: false,
+    roles:        [],
+    result:       null     // {date, groups: [{members: [{name, role}]}]}
   };
 }
 
@@ -108,6 +130,23 @@ export function isAxisEmpty(axis, value) {
          !(state.teacherDesk && state.teacherDesk[axis] === value);
 }
 
+/** Follows a renamed student into the rules, today's absence and the current groups. */
+export function renameStudentRefs(oldName, newName) {
+  if (!oldName || !newName || oldName === newName) return;
+  state.rules.forEach(r => {
+    if (r.a === oldName) r.a = newName;
+    if (r.b === oldName) r.b = newName;
+  });
+  // Renaming onto the other half of a rule would leave a rule about one person.
+  state.rules = state.rules.filter(r => r.a !== r.b);
+
+  const g = state.groups;
+  g.absent.names = g.absent.names.map(n => (n === oldName ? newName : n));
+  g.result?.groups.forEach(grp => grp.members.forEach(m => {
+    if (m.name === oldName) m.name = newName;
+  }));
+}
+
 /** Names appearing more than once, in first-seen order. */
 export function detectDuplicates(names) {
   const seen = new Set();
@@ -138,6 +177,90 @@ function pick(value, allowed, fallback) {
   return allowed.has(value) ? value : fallback;
 }
 
+/** Trimmed, de-duplicated, length-capped list of non-empty strings. */
+function asNameList(value, max, maxLength = 100) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(
+    value.filter(s => typeof s === 'string').map(s => s.trim().slice(0, maxLength)).filter(Boolean)
+  )].slice(0, max);
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function asDate(value) {
+  return typeof value === 'string' && DATE_RE.test(value) ? value : '';
+}
+
+function sanitizeRules(parsed) {
+  // Charts saved before «sammen» existed only have `exclusions`, and every one
+  // of those is a «skal ikke sitte sammen».
+  const raw = Array.isArray(parsed.rules)      ? parsed.rules
+            : Array.isArray(parsed.exclusions) ? parsed.exclusions.map(e => ({ ...e, type: 'apart' }))
+            : [];
+  const seen  = new Set();
+  const rules = [];
+  for (const r of raw) {
+    if (!r || typeof r.a !== 'string' || typeof r.b !== 'string') continue;
+    const a = r.a.trim().slice(0, 100);
+    const b = r.b.trim().slice(0, 100);
+    if (!a || !b || a === b) continue;
+    // One rule per pair — «sammen» and «ikke sammen» for the same two students
+    // can't both hold, and the add button enforces the same.
+    const key = a < b ? a + '\n' + b : b + '\n' + a;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rules.push({ a, b, type: pick(r.type, VALID_RULE_TYPES, 'apart') });
+    if (rules.length >= MAX_RULES) break;
+  }
+  return rules;
+}
+
+function sanitizeGroups(g) {
+  const next = createInitialGroups();
+  if (!g || typeof g !== 'object') return next;
+
+  next.sizeMode     = pick(g.sizeMode, VALID_GROUP_SIZE_MODES, 'size');
+  next.size         = clampInt(g.size,  MIN_GROUP_SIZE,  MAX_GROUP_SIZE,  4);
+  next.count        = clampInt(g.count, MIN_GROUP_COUNT, MAX_GROUP_COUNT, 6);
+  next.trackAbsence = g.trackAbsence === true;
+  next.absent       = { date: asDate(g.absent?.date), names: asNameList(g.absent?.names, MAX_DESKS) };
+  next.avoidRepeat  = g.avoidRepeat === true;
+  next.rolesEnabled = g.rolesEnabled === true;
+  next.roles        = asNameList(g.roles, MAX_ROLES, MAX_ROLE_LENGTH);
+
+  if (Array.isArray(g.history)) {
+    next.history = g.history
+      .filter(h => h && asDate(h.date) && Array.isArray(h.groups))
+      .slice(0, MAX_GROUP_HISTORY)
+      .map(h => ({
+        date:   h.date,
+        groups: h.groups.slice(0, MAX_DESKS).map(m => asNameList(m, MAX_DESKS)).filter(m => m.length > 0)
+      }));
+  }
+
+  const res = g.result;
+  if (res && typeof res === 'object' && Array.isArray(res.groups)) {
+    const seen = new Set();
+    const groups = res.groups.slice(0, MAX_DESKS).map(grp => ({
+      members: (Array.isArray(grp?.members) ? grp.members : [])
+        .filter(m => m && typeof m.name === 'string' && m.name.trim())
+        .map(m => ({
+          name: m.name.trim().slice(0, 100),
+          role: typeof m.role === 'string' && m.role.trim() ? m.role.trim().slice(0, MAX_ROLE_LENGTH) : null
+        }))
+        .filter(m => {
+          if (seen.has(m.name)) return false; // a student can only be in one group
+          seen.add(m.name);
+          return true;
+        })
+    }));
+    // Empty groups are kept on purpose: a group emptied by dragging stays as a
+    // card to drag students back into.
+    if (groups.length > 0) next.result = { date: asDate(res.date), groups };
+  }
+
+  return next;
+}
+
 /**
  * Turns arbitrary parsed JSON into a valid state object.
  * Always returns a usable state — never throws on malformed input.
@@ -146,6 +269,7 @@ export function sanitizeState(parsed) {
   const next = createInitialState();
   if (!parsed || typeof parsed !== 'object') return next;
 
+  next.mode      = pick(parsed.mode, VALID_MODES, 'seating');
   next.className = asString(parsed.className).slice(0, 100);
 
   if (Array.isArray(parsed.students)) {
@@ -204,13 +328,10 @@ export function sanitizeState(parsed) {
     ? next.desks.length
     : clampInt(parsed.deskCount, 1, MAX_DESK_COUNT, 24);
 
-  if (Array.isArray(parsed.exclusions)) {
-    next.exclusions = parsed.exclusions
-      .filter(e => e && typeof e.a === 'string' && typeof e.b === 'string' && e.a !== e.b)
-      .map(e => ({ a: e.a.trim().slice(0, 100), b: e.b.trim().slice(0, 100) }))
-      .filter(e => e.a && e.b)
-      .slice(0, 200);
-  }
+  next.rules           = sanitizeRules(parsed);
+  next.useRulesSeating = parsed.useRulesSeating !== false;
+  next.useRulesGroups  = parsed.useRulesGroups  !== false;
+  next.groups          = sanitizeGroups(parsed.groups);
 
   if (parsed.teacherDesk && typeof parsed.teacherDesk === 'object') {
     next.teacherDesk = {

@@ -43,6 +43,23 @@ export const MIN_PRINT_ZOOM  = 0.35;
 // couple of percent of slack is invisible but keeps a chart off page two.
 export const PRINT_FIT_SLACK = 0.98;
 
+// ── Rules ────────────────────────────────────────────────
+export const MAX_RULES   = 200;
+export const RULE_SYMBOL = { apart: '🚫', together: '🤝' };
+
+// ── Groups ───────────────────────────────────────────────
+export const MIN_GROUP_SIZE    = 2;
+export const MAX_GROUP_SIZE    = 15;
+export const MIN_GROUP_COUNT   = 2;
+export const MAX_GROUP_COUNT   = 30;
+export const MAX_GROUP_HISTORY = 5;  // earlier days «Unngå forrige grupper» remembers
+export const MAX_ROLES         = 12;
+export const MAX_ROLE_LENGTH   = 40;
+// Offered as one-click hints — never added unless the teacher picks them.
+export const ROLE_SUGGESTIONS  = [
+  'Ordstyrer', 'Sekretær', 'Tidtaker', 'Presentatør', 'Materialansvarlig', 'Djevelens advokat'
+];
+
 // ── Allowlists ───────────────────────────────────────────
 // Print format/orientation are interpolated into a <style> element, so they
 // must never carry arbitrary text from an imported file.
@@ -50,3 +67,6 @@ export const VALID_PRINT_FORMATS      = new Set(['A4', 'A3']);
 export const VALID_PRINT_ORIENTATIONS = new Set(['landscape', 'portrait']);
 export const VALID_BB_POSITIONS       = new Set(['top', 'bottom', 'left', 'right']);
 export const VALID_GROUP_SIZES        = new Set([1, 2, 3, 4]);
+export const VALID_MODES              = new Set(['seating', 'groups']);
+export const VALID_RULE_TYPES         = new Set(['apart', 'together']);
+export const VALID_GROUP_SIZE_MODES   = new Set(['size', 'count']);

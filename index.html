@@ -8,7 +8,7 @@
   <title>Klassekart</title>
   <!-- Inline favicon: avoids a 404 on every load without adding a file. -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🪑</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=21">
+  <link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body>
 
@@ -65,21 +65,48 @@
       </details>
     </div>
 
-    <!-- Mismatch-varsel -->
-    <div id="mismatch-warning"></div>
-    <div id="overflow-list"></div>
+    <!-- Mismatch-varsel. Wrapped: renderMismatchWarning() overwrites className. -->
+    <div class="seating-only">
+      <div id="mismatch-warning"></div>
+      <div id="overflow-list"></div>
+    </div>
 
-    <!-- Skal ikke sitte sammen -->
+    <!-- Regler — delt mellom klassekart og grupper. Lukket som standard, så
+         skjermen kan vises for klassen uten at reglene synes. -->
     <div class="section">
-      <label class="section-label">Skal ikke sitte sammen</label>
-      <datalist id="students-datalist"></datalist>
-      <div class="sub-row">
-        <input type="text" id="excl-a" list="students-datalist" class="input-sm" placeholder="Elev A">
-        <span class="excl-og">og</span>
-        <input type="text" id="excl-b" list="students-datalist" class="input-sm" placeholder="Elev B">
-        <button id="btn-add-excl" class="btn-sm">+</button>
-      </div>
-      <ul id="exclusion-list"></ul>
+      <details class="details-rules">
+        <summary class="details-summary">
+          Regler <span id="rule-count" class="rule-count"></span>
+          <span id="rule-alert" class="rule-alert" hidden>⚠</span>
+          <button type="button" id="rules-info" class="info-btn info-btn-sm" aria-expanded="false" aria-controls="rules-tip"
+            title="Regler bestemmer hvem som skal eller ikke skal havne sammen. Klikk for mer.">?</button>
+        </summary>
+        <div class="details-body">
+          <datalist id="students-datalist"></datalist>
+          <div class="sub-row">
+            <input type="text" id="rule-a" list="students-datalist" class="input-sm" placeholder="Elev A" aria-label="Elev A">
+            <span class="rule-og">og</span>
+            <input type="text" id="rule-b" list="students-datalist" class="input-sm" placeholder="Elev B" aria-label="Elev B">
+          </div>
+          <div class="btn-row mt-4">
+            <button type="button" id="btn-add-apart" class="btn-secondary">🚫 Ikke sammen</button>
+            <button type="button" id="btn-add-together" class="btn-secondary">🤝 Sammen</button>
+          </div>
+          <p id="rule-hint" class="rule-hint"></p>
+          <ul id="rule-list"></ul>
+          <label id="rule-options" class="check-row" hidden>
+            <input type="checkbox" id="use-rules" checked>
+            <span id="use-rules-label">Bruk reglene ved randomisering</span>
+          </label>
+        </div>
+      </details>
+      <!-- Outside <details> so the explanation can be read while the rules stay hidden. -->
+      <p id="rules-tip" class="opt-tip" hidden>
+        Regler bestemmer hvilke elever som <strong>skal</strong> eller <strong>ikke skal</strong> havne sammen —
+        ved siden av hverandre i klassekartet, eller i samme gruppe. Trekningen følger reglene så langt det
+        lar seg gjøre, og du kan slå dem av uten å slette dem.<br><br>
+        Panelet er lukket som standard, så elevene ikke ser reglene når skjermen vises på tavla.
+      </p>
     </div>
   </aside>
 
@@ -87,12 +114,39 @@
 
   <!-- ── Klasserom ──────────────────────────────────────── -->
   <main id="classroom-wrapper">
+    <nav id="mode-tabs" role="tablist" aria-label="Verktøy">
+      <button type="button" class="mode-tab active" role="tab" data-mode-tab="seating" aria-selected="true">🪑 Klassekart</button>
+      <button type="button" class="mode-tab" role="tab" data-mode-tab="groups" aria-selected="false">👥 Grupper</button>
+    </nav>
     <div id="print-header">
       <strong id="ph-class"></strong>
       <span id="ph-date"></span>
     </div>
-    <div id="stats-banner" class="stats-banner"></div>
-    <div id="classroom">
+
+    <!-- ── Grupper ─────────────────────────────────────── -->
+    <section id="groups-view" class="groups-only" aria-label="Grupper">
+      <div id="groups-toolbar" hidden>
+        <div id="groups-summary"></div>
+        <div class="groups-actions">
+          <button type="button" id="btn-reroll-roles" class="btn-tool" hidden>🎭 Nye roller</button>
+          <button type="button" id="btn-copy-groups" class="btn-tool">📋 Kopier</button>
+          <button type="button" id="btn-print-groups" class="btn-tool" title="Skriv ut (eller trykk Ctrl+P)">🖨️ Skriv ut</button>
+          <button type="button" id="btn-board" class="btn-tool btn-tool-dark">📺 Tavlemodus</button>
+        </div>
+      </div>
+      <div id="groups-notice"></div>
+      <div id="groups-empty" class="groups-empty">
+        <div class="groups-empty-icon" aria-hidden="true">👥</div>
+        <h2>Del klassen i grupper</h2>
+        <p id="groups-empty-text"></p>
+        <button type="button" id="btn-draw-empty" class="btn-primary btn-draw-big">🎲 Trekk grupper</button>
+        <button type="button" id="btn-board-empty" class="link-btn">…eller trekk dem rett på tavla 📺</button>
+      </div>
+      <div id="groups-grid"></div>
+    </section>
+
+    <div id="stats-banner" class="stats-banner seating-only"></div>
+    <div id="classroom" class="seating-only">
       <div id="blackboard">
         <span id="blackboard-label">TAVLE</span>
         <span id="classroom-title"></span>
@@ -112,8 +166,76 @@
   <!-- ── Høyre sidebar: Kart ───────────────────────────── -->
   <aside id="sidebar-right">
 
+    <!-- Gruppeinndeling -->
+    <div class="section groups-only">
+      <label class="section-label">Inndeling</label>
+      <div class="seg" role="group" aria-label="Del inn etter">
+        <button type="button" class="seg-btn" data-grp-sizemode="size">Per gruppe</button>
+        <button type="button" class="seg-btn" data-grp-sizemode="count">Antall grupper</button>
+      </div>
+      <div class="input-row mt-8">
+        <span class="input-label" id="grp-stepper-label">Elever per gruppe</span>
+        <div class="stepper">
+          <button type="button" class="stepper-btn" id="grp-dec" aria-label="Færre">−</button>
+          <span class="stepper-val" id="grp-val">4</span>
+          <button type="button" class="stepper-btn" id="grp-inc" aria-label="Flere">+</button>
+        </div>
+      </div>
+      <p class="grp-preview" id="grp-preview"></p>
+    </div>
+
+    <!-- Tillegg — alle av som standard -->
+    <div class="section groups-only">
+      <label class="section-label">Tillegg</label>
+
+      <div class="opt">
+        <div class="opt-row">
+          <label class="opt-label" for="grp-absent-toggle">Noen er borte i dag</label>
+          <input type="checkbox" id="grp-absent-toggle" class="switch">
+        </div>
+        <div class="opt-body" id="grp-absent-body" hidden>
+          <p class="opt-hint">Klikk på dem som er borte. Nullstilles av seg selv i morgen. <span id="grp-absent-count"></span></p>
+          <div class="chips" id="grp-absent-chips"></div>
+        </div>
+      </div>
+
+      <div class="opt">
+        <div class="opt-row">
+          <label class="opt-label" for="grp-repeat-toggle">Unngå forrige grupper</label>
+          <button type="button" class="info-btn" id="grp-repeat-info" aria-expanded="false" aria-controls="grp-repeat-tip" title="Hva betyr dette?">?</button>
+          <input type="checkbox" id="grp-repeat-toggle" class="switch">
+        </div>
+        <p class="opt-tip" id="grp-repeat-tip" hidden>
+          Prøver å sette sammen elever som ikke har vært på gruppe sammen de siste gangene.
+          Den siste trekningen fra hver dag huskes, opptil fem dager tilbake. Reglene går alltid foran.
+        </p>
+        <div class="opt-body" id="grp-repeat-body" hidden>
+          <p class="opt-hint"><span id="grp-history-count"></span> <button type="button" class="link-btn" id="btn-forget-history">Glem</button></p>
+        </div>
+      </div>
+
+      <div class="opt">
+        <div class="opt-row">
+          <label class="opt-label" for="grp-roles-toggle">Tildel roller</label>
+          <input type="checkbox" id="grp-roles-toggle" class="switch">
+        </div>
+        <div class="opt-body" id="grp-roles-body" hidden>
+          <div class="sub-row">
+            <input type="text" id="grp-role-input" class="input-sm" placeholder="Skriv en rolle …" maxlength="40" aria-label="Ny rolle">
+            <button type="button" id="btn-add-role" class="btn-sm">+</button>
+          </div>
+          <ol id="grp-role-list" class="role-list"></ol>
+          <p class="opt-hint" id="grp-role-hint"></p>
+          <div id="grp-role-suggest-wrap" class="role-suggest">
+            <span class="opt-hint">Forslag:</span>
+            <div class="chips" id="grp-role-suggestions"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Oppsett -->
-    <div class="section">
+    <div class="section seating-only">
       <label class="section-label">Oppsett</label>
       <div class="input-row">
         <span class="input-label">Antall pulter</span>
@@ -162,7 +284,7 @@
     </div>
 
     <!-- Lagrede kart -->
-    <div class="section">
+    <div class="section seating-only">
       <label class="section-label">Lagrede kart</label>
       <select id="saved-maps"><option value="">— Velg lagret kart —</option></select>
       <div class="btn-row mt-6">
@@ -172,9 +294,11 @@
       </div>
     </div>
 
-    <!-- Eksport / Import -->
-    <div class="section">
-      <label class="section-label">Eksport / Import</label>
+    <!-- Utskrift og eksport -->
+    <div class="section seating-only">
+      <label class="section-label">Utskrift og eksport</label>
+      <button type="button" id="btn-print" class="btn-primary">🖨️ Skriv ut</button>
+      <p class="print-hint">Virker ikke knappen? Trykk <kbd>Ctrl+P</kbd></p>
       <div class="sub-row mb-6">
         <select id="print-format" class="select-sm">
           <option value="A4">A4</option>
@@ -208,15 +332,39 @@
       <button id="btn-clear-data" class="btn-secondary btn-danger mt-6">🗑️ Slett all lokal data</button>
     </div>
 
-    <div class="sidebar-footer">
+    <!-- The chart has the hint under its print button; groups print from the toolbar. -->
+    <div class="sidebar-footer groups-only">
       Trykk <kbd>Ctrl+P</kbd> for å skrive ut
     </div>
   </aside>
+
+  <!-- ── Tavlemodus ───────────────────────────────────────── -->
+  <div id="board-view" role="dialog" aria-modal="true" aria-labelledby="bv-title" hidden>
+    <div class="bv-frame">
+      <header class="bv-head">
+        <h2 id="bv-title">Grupper</h2>
+        <div id="bv-deck" hidden>
+          <div class="bv-deck-stack" aria-hidden="true"><span></span><span></span><span></span></div>
+          <span id="bv-deck-count"></span>
+        </div>
+        <div class="bv-actions">
+          <button type="button" id="bv-skip" class="bv-btn" hidden>Hopp over ⏭</button>
+          <button type="button" id="bv-replay" class="bv-btn">✨ Del ut igjen</button>
+          <button type="button" id="bv-draw" class="bv-btn">🎲 Trekk på nytt</button>
+          <button type="button" id="bv-close" class="bv-btn" aria-label="Lukk tavlemodus">✕</button>
+        </div>
+      </header>
+      <div id="bv-grid"></div>
+      <div id="bv-empty">
+        <button type="button" id="bv-draw-empty" class="bv-btn bv-btn-big">🎲 Trekk grupper</button>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
     integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="></script>
-  <script type="module" src="src/main.js?v=21"></script>
+  <script type="module" src="src/main.js?v=22"></script>
 </body>
 </html>

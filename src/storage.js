@@ -3,7 +3,8 @@
 import { LS_MAP, LS_LIST, LS_LAST, MAX_DESKS } from './constants.js';
 import { state, replaceState, sanitizeState } from './state.js';
 import { renderAll, renderSavedMaps, renderSavedLists, renderMismatchWarning,
-         updateStudentCount, updateDatalist } from './render.js';
+         renderRuleList, updateStudentCount, updateDatalist } from './render.js';
+import { renderGroupsAll } from './groups-view.js';
 import { showToast } from './toast.js';
 
 const $ = id => document.getElementById(id);
@@ -105,6 +106,8 @@ export function loadList() {
     updateStudentCount();
     updateDatalist();
     renderMismatchWarning();
+    renderRuleList();
+    renderGroupsAll();
     showToast(`Liste "${name}" lastet inn`);
   } catch {
     showToast('Feil ved innlasting av liste');

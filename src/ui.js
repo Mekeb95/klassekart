@@ -3,13 +3,14 @@
 import { MAX_DESKS } from './constants.js';
 import {
   state, replaceState, createInitialState, pushUndo, popUndo, clearUndo,
-  getMoveMode, setMoveMode
+  getMoveMode, setMoveMode, renameStudentRefs
 } from './state.js';
 import {
   renderAll, renderClassroom, renderMismatchWarning, renderStatsBanner,
-  renderExclusionList, syncBlackboard, deskFontSize,
+  renderRuleList, syncBlackboard, deskFontSize,
   updateStudentCount, updateDatalist
 } from './render.js';
+import { renderGroupsAll } from './groups-view.js';
 import {
   fixMissingDesks, removeExcessDesks, deleteAxis, moveAxis,
   enterMoveMode, exitMoveMode, rebuildDesks, toggleDeskWidth, clearTeacherDesk
@@ -20,7 +21,11 @@ const $ = id => document.getElementById(id);
 
 // ── Undo ─────────────────────────────────────────────────
 export function undo() {
+  // The undo stack is shared by both tools. Switching tabs is not an edit, so
+  // an undo must not yank the teacher back to the tab they were on before.
+  const mode = state.mode;
   if (!popUndo()) { showToast('Ingenting å angre'); return; }
+  state.mode = mode;
   renderAll();
   showToast('Angret');
 }
@@ -151,6 +156,7 @@ export function startInlineEdit(deskEl, deskObj) {
         if (newName) state.students[idx] = newName;
         else state.students.splice(idx, 1);
       }
+      if (newName) renameStudentRefs(oldName, newName);
     } else if (newName && !state.students.includes(newName)) {
       if (state.students.length >= MAX_DESKS) {
         showToast('For mange elever');
@@ -166,6 +172,8 @@ export function startInlineEdit(deskEl, deskObj) {
     updateDatalist();
     renderClassroom();
     renderMismatchWarning();
+    renderRuleList();
+    renderGroupsAll();
   }
 
   function cancel() {
@@ -240,9 +248,10 @@ function initDelegatedActions() {
         exitMoveMode();
         break;
 
-      case 'remove-exclusion':
-        state.exclusions.splice(+index, 1);
-        renderExclusionList();
+      case 'remove-rule':
+        state.rules.splice(+index, 1);
+        renderRuleList();
+        renderGroupsAll();
         break;
 
       case 'reset-blackboard':
@@ -257,7 +266,9 @@ function initDelegatedActions() {
 // ── New class ────────────────────────────────────────────
 export function newClass() {
   if (!confirm('Start ny klasse? Alt som ikke er lagret vil gå tapt.')) return;
+  const mode = state.mode;
   replaceState(createInitialState());
+  state.mode = mode;
   clearUndo();
   setMoveMode(null);
   hideContextMenu();
@@ -294,6 +305,8 @@ export async function pasteFromClipboard() {
   updateStudentCount();
   updateDatalist();
   renderMismatchWarning();
+  renderRuleList();
+  renderGroupsAll();
   showToast(added > 0 ? `${added} navn lagt til` : 'Ingen nye navn funnet');
 }
 

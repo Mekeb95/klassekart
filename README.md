@@ -19,8 +19,34 @@ Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassek
 ### Randomisering og angring
 - Klikk **Randomiser** for å fordele elevene tilfeldig på pultene
 - **Ctrl+Z** (eller **↩ Angre**-knapp) angrer siste endring — opp til 20 steg bakover
-- Sett opp regler for **Skal ikke sitte sammen** — randomiseringsalgoritmen respekterer disse
 - **Låste pulter** hoppes over ved randomisering, slik at enkeltelevers faste plass bevares
+
+### Regler
+- Sett opp **🚫 Ikke sammen** og **🤝 Sammen** for par av elever — én felles regelliste
+  for klassekart og grupper
+- Regelpanelet er lukket som standard, så skjermen kan vises for klassen. Lukket
+  viser det verken navn eller antall, og kart og gruppekort sier aldri noe om
+  reglene — brutte regler markeres bare inne i panelet. **(?)** forklarer hva
+  regler er uten å åpne panelet
+- I klassekartet betyr «sammen» nabopulter (også på skrå); i grupper betyr det samme gruppe
+- Reglene kan slås av per verktøy («Bruk reglene …») uten å slette dem
+- Klarer ikke trekningen å oppfylle alle reglene, sier den fra om hvilke som brytes
+
+### Grupper
+Fanen **👥 Grupper** gjenbruker elevlisten og reglene fra klassekartet.
+- Del inn etter **elever per gruppe** eller **antall grupper** — gruppene blir alltid
+  jevne (maks én elevs forskjell), og du ser inndelingen før du trekker
+- **Dra elever** mellom gruppene for å justere for hånd
+- **Kopier** gruppene som tekst (til Teams, Classroom e.l.) eller **skriv ut**
+- **📺 Tavlemodus**: fullskjerm med store gruppekort for smartboardet, der navnene
+  deles ut fra en kortstokk. «✨ Del ut igjen» viser trekningen på nytt uten å trekke om
+
+Tillegg som er av til du slår dem på:
+- **Noen er borte i dag** — klikk bort fraværende; nullstilles av seg selv neste dag
+- **Unngå forrige grupper** — setter helst sammen elever som ikke har vært på gruppe
+  sammen nylig (siste trekning per dag, opptil 5 dager). Reglene går alltid foran
+- **Tildel roller** — legg inn egne roller (med forslag), som deles ut tilfeldig i
+  hver gruppe; «🎭 Nye roller» deler ut på nytt uten å endre gruppene
 
 ### Interaktiv redigering
 - **Dra og slipp** pulter fritt rundt i klasserommet for å gjøre manuelle justeringer
@@ -53,7 +79,7 @@ Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassek
   side. Fjern haken hvis du heller vil ha full størrelse og la kartet gå over
   flere sider
 - **Skjul tomme pulter** ved utskrift/eksport via avkrysningsboks
-- **Ctrl+P** skriver ut klassekartet med klassenavn og dato øverst
+- **🖨️ Skriv ut** (eller **Ctrl+P**) skriver ut klassekartet med klassenavn og dato øverst
 - **Eksporter som PNG** for å lagre klassekartet som bilde
 
 ---
@@ -74,8 +100,11 @@ filene serveres som de er.
 | `constants.js` | Rutenett-geometri, grenser, lagringsnøkler, tillatte verdier |
 | `state.js` | Tilstandsobjektet, angrelager, og validering av alt som lastes inn |
 | `layout.js` | Ren geometri: cellekoordinater, autolayout, naboskap |
-| `randomize.js` | Stokking og plassering som minimerer brudd på «skal ikke sitte sammen» |
-| `render.js` | All DOM-tegning |
+| `randomize.js` | Stokking, og plassering som minimerer regelbrudd (bytte-søk) |
+| `groups.js` | Ren gruppelogikk: størrelser, trekning, roller, historikk, tekst |
+| `groups-view.js` | Gruppefanen: innstillinger, gruppekort, dra-og-slipp, tavlemodus |
+| `rules-view.js` | Regellisten, med live markering av brutte regler i begge faner |
+| `render.js` | DOM-tegning for klassekartet, regellisten og fanebytte |
 | `desks.js` | Operasjoner på pulter, rader/kolonner og lærerpult |
 | `dnd.js` | Dra-og-slipp og tavlehåndtak |
 | `storage.js` | localStorage, JSON-import/eksport, PNG |
@@ -92,7 +121,7 @@ python3 -m http.server 8000     # åpne http://localhost:8000
 GitHub Pages serverer allerede over HTTP, så den publiserte versjonen
 er upåvirket.
 
-`layout.js`, `randomize.js` og valideringen i `state.js` er rene funksjoner
-uten DOM-avhengigheter, og kan testes direkte.
+`layout.js`, `randomize.js`, `groups.js` og valideringen i `state.js` er rene
+funksjoner uten DOM-avhengigheter, og kan testes direkte.
 
 ---
