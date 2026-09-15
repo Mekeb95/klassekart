@@ -1,8 +1,8 @@
-# Klassekart
+# Klassetavla
 
-Et interaktivt klassekart-verktøy for lærere. Lag, tilpass og skriv ut klassekart på sekunder — helt i nettleseren, ingen installasjon nødvendig.
+Klassekart og gruppeinndeling for lærere. Lag, tilpass og skriv ut klassekart og grupper på sekunder — helt i nettleseren, ingen installasjon nødvendig.
 
-🔗 **[Åpne Klassekart](https://mekeb95.github.io/klassekart/)**
+🔗 **[Åpne Klassetavla](https://www.klassetavla.no)**
 
 ---
 
