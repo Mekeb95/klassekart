@@ -14,6 +14,7 @@ import {
 import { rebuildDesks, toggleTeacherDesk, nudgeGrid, exitMoveMode } from './desks.js';
 import { randomizeSeating } from './randomize.js';
 import { initGroups, renderGroupsAll, drawGroupsNow } from './groups-view.js';
+import { initActivities, renderActivitiesAll, drawTeamsNow } from './activities-view.js';
 import { initDragAndDrop, initBlackboardResize } from './dnd.js';
 import {
   saveToLocalStorage, loadFromLocalStorage, deleteFromLocalStorage, clearAllData,
@@ -30,6 +31,11 @@ function handleRandomize() {
   if (state.mode === 'groups') {
     syncDupWarning();
     drawGroupsNow();
+    return;
+  }
+  if (state.mode === 'activities') {
+    syncDupWarning();
+    drawTeamsNow();
     return;
   }
   if (syncDupWarning().length > 0) {
@@ -81,6 +87,7 @@ function addRule(type) {
   $('rule-a').focus();
   renderRuleList();
   renderGroupsAll();
+  renderActivitiesAll();
   showToast(existing
     ? `Regelen er endret til «${type === 'together' ? 'sammen' : 'ikke sammen'}»`
     : 'Regel lagt til');
@@ -115,6 +122,7 @@ function handleStudentInput(e) {
   renderMismatchWarning();
   renderRuleList();
   renderGroupsAll();
+  renderActivitiesAll();
 }
 
 // ── Event wiring ─────────────────────────────────────────
@@ -190,8 +198,9 @@ function setupEventListeners() {
   $('btn-add-apart').addEventListener('click', () => addRule('apart'));
   $('btn-add-together').addEventListener('click', () => addRule('together'));
   $('use-rules').addEventListener('change', e => {
-    if (state.mode === 'groups') state.useRulesGroups  = e.target.checked;
-    else                         state.useRulesSeating = e.target.checked;
+    const field = { groups: 'useRulesGroups', activities: 'useRulesActivities' }[state.mode]
+      || 'useRulesSeating';
+    state[field] = e.target.checked;
     renderRuleList();
     renderGroupsAll();
   });
@@ -260,6 +269,7 @@ function initApp() {
   setupEventListeners();
   initUI();
   initGroups();
+  initActivities();
   initDragAndDrop();
   initBlackboardResize();
   renderAll();

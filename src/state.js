@@ -5,16 +5,19 @@ import {
   MIN_TEXT_SCALE, MAX_TEXT_SCALE, MAX_RULES,
   MIN_GROUP_SIZE, MAX_GROUP_SIZE, MIN_GROUP_COUNT, MAX_GROUP_COUNT,
   MAX_GROUP_HISTORY, MAX_ROLES, MAX_ROLE_LENGTH,
+  MIN_TEAM_SIZE, MAX_TEAM_SIZE, MAX_TEAMS, MAX_TEAM_NAME, MAX_ROUNDS, MAX_POINTS,
+  DEFAULT_SECONDS, SECONDS_CHOICES, CLASSIC_CATEGORIES,
   VALID_PRINT_FORMATS, VALID_PRINT_ORIENTATIONS, VALID_BB_POSITIONS, VALID_GROUP_SIZES,
-  VALID_MODES, VALID_RULE_TYPES, VALID_GROUP_SIZE_MODES
+  VALID_MODES, VALID_RULE_TYPES, VALID_GROUP_SIZE_MODES, VALID_ACTIVITIES, VALID_GAME_PHASES
 } from './constants.js';
+import { normalizeCategories, letterPool, defaultTeamName } from './activities.js';
 
 // ── State shape ──────────────────────────────────────────
 // desks: [{id, col, row, groupId, studentName, locked, marked, size}]
 export function createInitialState() {
   return {
     version:               2,
-    mode:                  'seating', // 'seating' (klassekart) | 'groups'
+    mode:                  'seating', // 'seating' (klassekart) | 'groups' | 'activities'
     className:             '',
     students:              [],
     deskCount:             24,
@@ -26,7 +29,9 @@ export function createInitialState() {
     rules:                 [],   // [{a, b, type: 'apart'|'together'}] — shared by both tools
     useRulesSeating:       true,
     useRulesGroups:        true,
+    useRulesActivities:    true,
     groups:                createInitialGroups(),
+    activities:            createInitialActivities(),
     teacherDesk:           null, // {col, row} or null
     desks:                 [],
     printFormat:           'A4',
@@ -50,6 +55,32 @@ export function createInitialGroups() {
     rolesEnabled: false,
     roles:        [],
     result:       null     // {date, groups: [{members: [{name, role}]}]}
+  };
+}
+
+export function createInitialActivities() {
+  return {
+    active:      null,            // null = aktivitetsvelgeren, ellers en aktivitets-id
+    mariusleken: createInitialMariusleken()
+  };
+}
+
+export function createInitialMariusleken() {
+  return {
+    teamSize:    4,
+    teams:       [],                       // [{name, custom, members: [name]}]
+    categories:  [...CLASSIC_CATEGORIES],
+    seconds:     DEFAULT_SECONDS,          // per kategori
+    sound:       true,
+    hardLetters: false,
+    sheetCategories: false,                // skriv kategoriene på det utskrevne svararket
+    phase:       'setup',                  // setup | ready | play | score | done
+    letter:      null,                     // bokstaven i runden som går nå
+    usedLetters: [],
+    remaining:   0,                        // sekunder igjen av runden
+    paused:      false,
+    marks:       [],                       // marks[lag][kategori] = 0 | 1 | 2
+    rounds:      []                        // [{letter, categories, marks}] — ferdige runder
   };
 }
 
@@ -145,6 +176,10 @@ export function renameStudentRefs(oldName, newName) {
   g.result?.groups.forEach(grp => grp.members.forEach(m => {
     if (m.name === oldName) m.name = newName;
   }));
+
+  state.activities.mariusleken.teams.forEach(team => {
+    team.members = team.members.map(n => (n === oldName ? newName : n));
+  });
 }
 
 /** Names appearing more than once, in first-seen order. */
@@ -261,6 +296,97 @@ function sanitizeGroups(g) {
   return next;
 }
 
+const ALL_LETTERS = new Set(letterPool(true));
+
+function asLetter(value) {
+  const letter = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return ALL_LETTERS.has(letter) ? letter : null;
+}
+
+/** marks[team][category], every cell clamped to 0…MAX_POINTS and the grid to size. */
+function asMarks(value, teamCount, categoryCount) {
+  const rows = Array.isArray(value) ? value : [];
+  return Array.from({ length: teamCount }, (_, t) => {
+    const row = Array.isArray(rows[t]) ? rows[t] : [];
+    return Array.from({ length: categoryCount }, (_, c) => clampInt(row[c], 0, MAX_POINTS, 0));
+  });
+}
+
+function sanitizeMariusleken(m) {
+  const next = createInitialMariusleken();
+  if (!m || typeof m !== 'object') return next;
+
+  next.teamSize        = clampInt(m.teamSize, MIN_TEAM_SIZE, MAX_TEAM_SIZE, 4);
+  next.seconds         = pick(clampInt(m.seconds, 5, 300, DEFAULT_SECONDS), new Set(SECONDS_CHOICES), DEFAULT_SECONDS);
+  next.sound           = m.sound !== false;
+  next.hardLetters     = m.hardLetters === true;
+  next.sheetCategories = m.sheetCategories === true;
+
+  // An empty category list would leave the game with nothing to play, so the
+  // classic set from createInitialMariusleken() stands in.
+  const categories = normalizeCategories(m.categories);
+  if (categories.length > 0) next.categories = categories;
+
+  if (Array.isArray(m.teams)) {
+    // A student can only play on one team, whatever the file says.
+    const taken = new Set();
+    next.teams = m.teams
+      .filter(t => t && typeof t === 'object')
+      .slice(0, MAX_TEAMS)
+      .map((t, i) => {
+        const name = asString(t.name).trim().slice(0, MAX_TEAM_NAME);
+        return {
+          name:    name || defaultTeamName(i),
+          custom:  t.custom === true && !!name,
+          members: asNameList(t.members, MAX_DESKS).filter(n => {
+            if (taken.has(n)) return false;
+            taken.add(n);
+            return true;
+          })
+        };
+      });
+  }
+
+  next.usedLetters = [...new Set(
+    (Array.isArray(m.usedLetters) ? m.usedLetters : []).map(asLetter).filter(Boolean)
+  )].slice(0, ALL_LETTERS.size);
+
+  const teamCount = next.teams.length;
+
+  if (Array.isArray(m.rounds)) {
+    next.rounds = m.rounds
+      .filter(r => r && typeof r === 'object' && asLetter(r.letter))
+      .slice(0, MAX_ROUNDS)
+      .map(r => {
+        const cats = normalizeCategories(r.categories);
+        return { letter: asLetter(r.letter), categories: cats, marks: asMarks(r.marks, teamCount, cats.length) };
+      })
+      .filter(r => r.categories.length > 0);
+  }
+
+  next.letter = asLetter(m.letter);
+  next.marks  = asMarks(m.marks, teamCount, next.categories.length);
+
+  // A countdown can't keep running while the tab is gone, so a round that was
+  // in progress comes back paused with the time it had left — not restarted.
+  let phase = pick(m.phase, VALID_GAME_PHASES, 'setup');
+  if (!next.letter && (phase === 'score' || phase === 'play')) phase = 'ready';
+  if (teamCount < 2) phase = 'setup';
+  next.phase     = phase;
+  next.remaining = clampInt(m.remaining, 0, MAX_ROUNDS * 60 * 60, 0);
+  next.paused    = phase === 'play' ? true : m.paused === true;
+
+  return next;
+}
+
+function sanitizeActivities(a) {
+  const next = createInitialActivities();
+  if (!a || typeof a !== 'object') return next;
+  next.active      = pick(a.active, VALID_ACTIVITIES, null);
+  next.mariusleken = sanitizeMariusleken(a.mariusleken);
+  return next;
+}
+
 /**
  * Turns arbitrary parsed JSON into a valid state object.
  * Always returns a usable state — never throws on malformed input.
@@ -328,10 +454,12 @@ export function sanitizeState(parsed) {
     ? next.desks.length
     : clampInt(parsed.deskCount, 1, MAX_DESK_COUNT, 24);
 
-  next.rules           = sanitizeRules(parsed);
-  next.useRulesSeating = parsed.useRulesSeating !== false;
-  next.useRulesGroups  = parsed.useRulesGroups  !== false;
-  next.groups          = sanitizeGroups(parsed.groups);
+  next.rules              = sanitizeRules(parsed);
+  next.useRulesSeating    = parsed.useRulesSeating    !== false;
+  next.useRulesGroups     = parsed.useRulesGroups     !== false;
+  next.useRulesActivities = parsed.useRulesActivities !== false;
+  next.groups             = sanitizeGroups(parsed.groups);
+  next.activities         = sanitizeActivities(parsed.activities);
 
   if (parsed.teacherDesk && typeof parsed.teacherDesk === 'object') {
     next.teacherDesk = {

@@ -1,6 +1,6 @@
 'use strict';
 
-import { shuffle } from './randomize.js';
+import { shuffle } from './shuffle.js';
 
 // Pure group logic: sizes, the draw itself, roles, history and text export.
 // No DOM and no live state — every function works on the values it is given.

@@ -67,6 +67,53 @@ export const VALID_PRINT_FORMATS      = new Set(['A4', 'A3']);
 export const VALID_PRINT_ORIENTATIONS = new Set(['landscape', 'portrait']);
 export const VALID_BB_POSITIONS       = new Set(['top', 'bottom', 'left', 'right']);
 export const VALID_GROUP_SIZES        = new Set([1, 2, 3, 4]);
-export const VALID_MODES              = new Set(['seating', 'groups']);
+export const VALID_MODES              = new Set(['seating', 'groups', 'activities']);
 export const VALID_RULE_TYPES         = new Set(['apart', 'together']);
 export const VALID_GROUP_SIZE_MODES   = new Set(['size', 'count']);
+
+// ── Aktiviteter ──────────────────────────────────────────
+// Leker som gjenbruker elevlisten og reglene. Én aktivitet foreløpig, men
+// state og visning er bygget for at det kommer flere.
+export const VALID_ACTIVITIES  = new Set(['mariusleken']);
+export const VALID_GAME_PHASES = new Set(['setup', 'ready', 'play', 'score', 'done']);
+
+export const MIN_TEAM_SIZE   = 2;
+export const MAX_TEAM_SIZE   = 10;
+export const MAX_TEAMS       = 12;
+export const MAX_TEAM_NAME   = 30;
+export const MIN_CATEGORIES  = 2;
+export const MAX_CATEGORIES  = 8;
+export const MAX_CAT_LENGTH  = 30;
+export const MAX_ROUNDS      = 40;
+export const MAX_POINTS      = 2;  // per kategori: 0 = tomt/feil, 1 = flere hadde det, 2 = alene
+export const SECONDS_CHOICES = [15, 20, 30, 45, 60];
+export const DEFAULT_SECONDS = 30;
+export const ROUNDS_ON_SHEET = 8;  // rader på det utskrevne svararket
+
+// Bokstaver det faktisk går an å finne ord på. C, Q, W, X, Y, Z og Æ ligger bak
+// «vanskelige bokstaver» — ellers står et helt lag fast i to minutter.
+export const EASY_LETTERS = [
+  'A', 'B', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
+  'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'V', 'Ø', 'Å'
+];
+export const HARD_LETTERS = ['C', 'Q', 'W', 'X', 'Y', 'Z', 'Æ'];
+
+// Trekkes som standardsett, men er ikke låst — læreren kan bytte ut én og én.
+export const CLASSIC_CATEGORIES = ['By', 'Land', 'Elv', 'Navn', 'Dyr'];
+
+// Alt som kan trekkes. Holdt til kategorier en 8.-klassing har noe å skrive på
+// for de fleste bokstaver.
+export const CATEGORY_BANK = [
+  'By', 'Land', 'Elv', 'Navn', 'Dyr', 'Hovedstad', 'Norsk kommune', 'Fjell', 'Innsjø',
+  'Hav eller fjord', 'Verdensdel', 'Sted i Norge', 'Sted i verden', 'Språk', 'Nasjonalitet',
+  'Yrke', 'Skolefag', 'Kjendis', 'Historisk person', 'Eventyrfigur', 'Superhelt',
+  'Mat', 'Frukt eller grønnsak', 'Drikke', 'Dessert', 'Krydder', 'Ting på kjøkkenet',
+  'Farge', 'Kroppsdel', 'Klesplagg', 'Møbel', 'Verktøy', 'Kjøretøy', 'Bilmerke',
+  'Sport eller idrett', 'Idrettsutøver', 'Musikkinstrument', 'Sang eller artist',
+  'Film', 'TV-serie', 'Bok eller forfatter', 'Dataspill', 'Brettspill eller leke',
+  'Nettsted eller app', 'Merkevare', 'Butikk eller kjede',
+  'Fugl', 'Fisk', 'Insekt', 'Kjæledyr', 'Blomst', 'Tre eller plante',
+  'Grunnstoff', 'Planet eller stjerne', 'Værfenomen', 'Oppfinnelse',
+  'Ting i klasserommet', 'Ting i sekken', 'Ting som lager lyd', 'Ting som er rundt',
+  'Adjektiv', 'Verb', 'Følelse', 'Høytid eller merkedag', 'Bursdagsgave', 'Organisasjon'
+];

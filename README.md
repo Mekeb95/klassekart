@@ -1,6 +1,8 @@
 # Klassetavla
 
-Klassekart og gruppeinndeling for lærere. Lag, tilpass og skriv ut klassekart og grupper på sekunder — helt i nettleseren, ingen installasjon nødvendig.
+Klassekart, gruppeinndeling og klasseromsleker for lærere. Lag, tilpass og skriv ut
+klassekart og grupper på sekunder, og gjør tavla om til en spillskjerm — helt i
+nettleseren, ingen installasjon nødvendig.
 
 🔗 **[Åpne Klassetavla](https://www.klassetavla.no)**
 
@@ -47,6 +49,32 @@ Tillegg som er av til du slår dem på:
   sammen nylig (siste trekning per dag, opptil 5 dager). Reglene går alltid foran
 - **Tildel roller** — legg inn egne roller (med forslag), som deles ut tilfeldig i
   hver gruppe; «🎭 Nye roller» deler ut på nytt uten å endre gruppene
+
+### Aktiviteter
+Fanen **🎲 Aktiviteter** bruker den samme elevlisten og de samme reglene som resten
+av appen, og åpner spillet i fullskjerm — klart for projektoren.
+
+**Mariusleken** (by, land, elv):
+- **Kategorier** starter på det klassiske settet (By, Land, Elv, Navn, Dyr), men
+  ingenting er låst: **🎲 Trekk nye** bytter hele settet, 🎲 på en enkelt kategori
+  bytter bare den, ✕ fjerner den, og du kan skrive inn dine egne. 2–8 kategorier
+- **Lag** trekkes med de samme reglene som gruppene («🚫 ikke sammen» gir ulike lag,
+  «🤝 sammen» gir samme lag), og fravær fra Grupper-fanen tas hensyn til.
+  Ferdige grupper kan også hentes rett inn med **👥 Hent fra Grupper**.
+  Lagnavnene kan skrives om
+- **Bokstaven** trekkes tilfeldig og gjentas ikke før alle er brukt. C, Q, W, X, Y,
+  Z og Æ er utelatt til du slår på «vanskelige bokstaver»
+- **Timeren** gir 30 sekunder per kategori som standard (15–60 kan velges), vises som
+  en stor nedtellingsring, teller ned med lyd de siste sekundene og markerer stopp
+  tydelig på tavla. **Mellomrom** starter og pauser runden
+- **Poeng** føres i et trykkrutenett rett på tavla: trykk i ruta til den viser riktig
+  tall — 0 for tomt eller feil bokstav, 1 når flere lag hadde ordet, 2 når laget var
+  alene om det
+- **Stillingen** vises som søylediagram mellom rundene, og **🏆 Avslutt** gir et
+  podium med 1., 2. og 3. plass. Lag med like mange poeng deler plass
+- **🖨️ Skriv ut svarark** gir ett ark per lag med en ferdig tabell. Kategorikolonnene
+  er blanke som standard, så arkene kan skrives ut på forhånd og fylles ut av elevene
+  når kategoriene er trukket
 
 ### Interaktiv redigering
 - **Dra og slipp** pulter fritt rundt i klasserommet for å gjøre manuelle justeringer
@@ -101,9 +129,12 @@ filene serveres som de er.
 | `state.js` | Tilstandsobjektet, angrelager, og validering av alt som lastes inn |
 | `layout.js` | Ren geometri: cellekoordinater, autolayout, naboskap |
 | `randomize.js` | Stokking, og plassering som minimerer regelbrudd (bytte-søk) |
+| `shuffle.js` | Fisher–Yates — delt av pult-, gruppe- og lagtrekningen |
 | `groups.js` | Ren gruppelogikk: størrelser, trekning, roller, historikk, tekst |
 | `groups-view.js` | Gruppefanen: innstillinger, gruppekort, dra-og-slipp, tavlemodus |
-| `rules-view.js` | Regellisten, med live markering av brutte regler i begge faner |
+| `activities.js` | Ren spillogikk: bokstaver, kategorier, poeng, stilling, podium |
+| `activities-view.js` | Aktivitetsfanen: oppsett, fullskjermsspillet, poengføring, svarark |
+| `rules-view.js` | Regellisten, med live markering av brutte regler i alle faner |
 | `render.js` | DOM-tegning for klassekartet, regellisten og fanebytte |
 | `desks.js` | Operasjoner på pulter, rader/kolonner og lærerpult |
 | `dnd.js` | Dra-og-slipp og tavlehåndtak |
@@ -121,7 +152,8 @@ python3 -m http.server 8000     # åpne http://localhost:8000
 GitHub Pages serverer allerede over HTTP, så den publiserte versjonen
 er upåvirket.
 
-`layout.js`, `randomize.js`, `groups.js` og valideringen i `state.js` er rene
-funksjoner uten DOM-avhengigheter, og kan testes direkte.
+`layout.js`, `shuffle.js`, `randomize.js`, `groups.js`, `activities.js` og
+valideringen i `state.js` er rene funksjoner uten DOM-avhengigheter, og kan
+testes direkte.
 
 ---
