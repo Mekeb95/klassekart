@@ -22,12 +22,21 @@ function currentlyBroken() {
     if (!state.useRulesGroups || !res) return new Set();
     return new Set(brokenGroupRules(res.groups.map(g => g.members.map(m => m.name)), state.rules));
   }
+  if (state.mode === 'activities') {
+    const teams = state.activities.mariusleken.teams;
+    if (!state.useRulesActivities || teams.length === 0) return new Set();
+    return new Set(brokenGroupRules(teams.map(t => t.members), state.rules));
+  }
   return new Set(state.useRulesSeating ? brokenSeatRules(state.desks, state.rules) : []);
 }
 
 export function renderRuleList() {
-  const groups = state.mode === 'groups';
-  const active = groups ? state.useRulesGroups : state.useRulesSeating;
+  // Groups and activities both put students in one set together or apart, so
+  // they read the same way; only the seating chart talks about neighbours.
+  const byTeam = state.mode === 'groups' || state.mode === 'activities';
+  const active = state.mode === 'groups'     ? state.useRulesGroups
+               : state.mode === 'activities' ? state.useRulesActivities
+               : state.useRulesSeating;
   const known  = new Set(state.students);
   const broken = currentlyBroken();
 
@@ -77,10 +86,12 @@ export function renderRuleList() {
   $('rule-alert').hidden = broken.size === 0;
   $('rule-alert').title  = broken.size === 1 ? '1 regel brytes' : `${broken.size} regler brytes`;
 
-  $('rule-hint').textContent = groups
-    ? '🚫 ulike grupper · 🤝 samme gruppe'
-    : '🚫 ikke nabo · 🤝 nabo, også på skrå';
+  $('rule-hint').textContent = state.mode === 'activities' ? '🚫 ulike lag · 🤝 samme lag'
+                             : state.mode === 'groups'     ? '🚫 ulike grupper · 🤝 samme gruppe'
+                             : '🚫 ikke nabo · 🤝 nabo, også på skrå';
   $('rule-options').hidden         = state.rules.length === 0;
   $('use-rules').checked           = active;
-  $('use-rules-label').textContent = groups ? 'Bruk reglene når gruppene trekkes' : 'Bruk reglene ved randomisering';
+  $('use-rules-label').textContent = state.mode === 'activities' ? 'Bruk reglene når lagene trekkes'
+                                   : byTeam                     ? 'Bruk reglene når gruppene trekkes'
+                                   : 'Bruk reglene ved randomisering';
 }

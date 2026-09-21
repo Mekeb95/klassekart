@@ -8,9 +8,9 @@
   <title>Klassetavla</title>
   <!-- Inline favicon: avoids a 404 on every load without adding a file. -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🪑</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=23">
+  <link rel="stylesheet" href="styles.css?v=24">
 </head>
-<body>
+<body class="mode-seating">
 
   <!-- Custom context menu (right-click on desk) -->
   <div id="context-menu" role="menu" aria-label="Pultvalg">
@@ -117,6 +117,7 @@
     <nav id="mode-tabs" role="tablist" aria-label="Verktøy">
       <button type="button" class="mode-tab active" role="tab" data-mode-tab="seating" aria-selected="true">🪑 Klassekart</button>
       <button type="button" class="mode-tab" role="tab" data-mode-tab="groups" aria-selected="false">👥 Grupper</button>
+      <button type="button" class="mode-tab" role="tab" data-mode-tab="activities" aria-selected="false">🎲 Aktiviteter</button>
     </nav>
     <div id="print-header">
       <strong id="ph-class"></strong>
@@ -144,6 +145,74 @@
       </div>
       <div id="groups-grid"></div>
     </section>
+
+    <!-- ── Aktiviteter ─────────────────────────────────── -->
+    <section id="activities-view" class="activities-only" aria-label="Aktiviteter">
+
+      <div id="act-picker">
+        <h2 class="act-title">Aktiviteter</h2>
+        <p class="act-intro">
+          Leker som bruker elevlisten og reglene dine. Spillet åpnes i fullskjerm, klart for projektoren.
+        </p>
+        <div id="act-cards" class="act-cards">
+          <button type="button" class="act-card" data-act-open="mariusleken">
+            <span class="act-card-icon" aria-hidden="true">🅰️</span>
+            <span class="act-card-title">Mariusleken</span>
+            <span class="act-card-sub">By, land, elv — lag, bokstav, timer og poeng på tavla</span>
+          </button>
+          <div class="act-card act-card-soon">
+            <span class="act-card-icon" aria-hidden="true">➕</span>
+            <span class="act-card-title">Flere kommer</span>
+            <span class="act-card-sub">Det er plass til flere leker her.</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="act-setup" hidden>
+        <header id="act-setup-head">
+          <button type="button" id="act-back" class="link-btn">‹ Alle aktiviteter</button>
+          <h2 class="act-title">Mariusleken</h2>
+          <p id="act-setup-sub" class="act-intro"></p>
+        </header>
+
+        <section class="act-panel">
+          <div class="act-panel-head">
+            <h3>Kategorier <span id="act-cat-count" class="act-muted"></span></h3>
+            <div class="act-panel-actions">
+              <button type="button" id="act-cat-reroll" class="btn-tool">🎲 Trekk nye</button>
+              <button type="button" id="act-cat-classic" class="btn-tool">Klassisk sett</button>
+            </div>
+          </div>
+          <ul id="act-cat-list" class="act-cats"></ul>
+          <div class="sub-row mt-6">
+            <input type="text" id="act-cat-input" class="input-sm" maxlength="30"
+              placeholder="Skriv inn en egen kategori …" aria-label="Ny kategori">
+            <button type="button" id="act-cat-add" class="btn-sm">+</button>
+          </div>
+          <p id="act-cat-hint" class="act-hint"></p>
+        </section>
+
+        <section class="act-panel">
+          <div class="act-panel-head">
+            <h3>Lag <span id="act-team-count" class="act-muted"></span></h3>
+            <div class="act-panel-actions">
+              <button type="button" id="act-teams-draw" class="btn-tool">🎲 Trekk lag</button>
+              <button type="button" id="act-teams-import" class="btn-tool">👥 Hent fra Grupper</button>
+            </div>
+          </div>
+          <div id="act-teams" class="act-teams"></div>
+          <p id="act-team-hint" class="act-hint"></p>
+        </section>
+
+        <div id="act-start-row">
+          <button type="button" id="act-start" class="btn-primary btn-draw-big">▶ Start Mariusleken</button>
+          <button type="button" id="act-reset" class="link-btn" hidden>Nullstill spillet</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bygges bare når svararkene skrives ut; skjult på skjermen. -->
+    <div id="answer-sheets" aria-hidden="true"></div>
 
     <div id="stats-banner" class="stats-banner seating-only"></div>
     <div id="classroom" class="seating-only">
@@ -232,6 +301,72 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Aktiviteter -->
+    <div class="section activities-only">
+      <label class="section-label">Lag</label>
+      <div class="input-row">
+        <span class="input-label">Elever per lag</span>
+        <div class="stepper">
+          <button type="button" class="stepper-btn" id="act-size-dec" aria-label="Færre">−</button>
+          <span class="stepper-val" id="act-size-val">4</span>
+          <button type="button" class="stepper-btn" id="act-size-inc" aria-label="Flere">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section activities-only">
+      <label class="section-label">Spillet</label>
+      <div class="input-row">
+        <span class="input-label">Antall kategorier</span>
+        <div class="stepper">
+          <button type="button" class="stepper-btn" id="act-cat-dec" aria-label="Færre">−</button>
+          <span class="stepper-val" id="act-cat-num">5</span>
+          <button type="button" class="stepper-btn" id="act-cat-inc" aria-label="Flere">+</button>
+        </div>
+      </div>
+      <div class="input-row">
+        <span class="input-label">Tid per kategori</span>
+        <select id="act-seconds" class="select-sm">
+          <option value="15">15 sek</option>
+          <option value="20">20 sek</option>
+          <option value="30" selected>30 sek</option>
+          <option value="45">45 sek</option>
+          <option value="60">60 sek</option>
+        </select>
+      </div>
+      <p class="opt-hint">Én runde varer <span id="act-round-time">2:30</span>.</p>
+
+      <div class="opt">
+        <div class="opt-row">
+          <label class="opt-label" for="act-sound">Lyd</label>
+          <input type="checkbox" id="act-sound" class="switch" checked>
+        </div>
+      </div>
+
+      <div class="opt">
+        <div class="opt-row">
+          <label class="opt-label" for="act-hard">Vanskelige bokstaver</label>
+          <button type="button" class="info-btn" id="act-hard-info" aria-expanded="false"
+            aria-controls="act-hard-tip" title="Hva betyr dette?">?</button>
+          <input type="checkbox" id="act-hard" class="switch">
+        </div>
+        <p class="opt-tip" id="act-hard-tip" hidden>
+          Tar C, Q, W, X, Y, Z og Æ med i bokstavtrekningen. Av som standard — ellers
+          kan et helt lag bli sittende fast i to minutter.
+        </p>
+      </div>
+    </div>
+
+    <div class="section activities-only">
+      <label class="section-label">Svarark</label>
+      <p class="opt-hint">Tabell til utfylling for hånd — ett ark per lag, eller blanke ark om lagene ikke er trukket.</p>
+      <div class="input-row">
+        <label class="input-label" for="act-sheet-cats">Skriv kategoriene på arket</label>
+        <input type="checkbox" id="act-sheet-cats">
+      </div>
+      <button type="button" id="act-print-sheets" class="btn-primary mt-6">🖨️ Skriv ut svarark</button>
     </div>
 
     <!-- Oppsett -->
@@ -361,10 +496,26 @@
     </div>
   </div>
 
+  <!-- ── Spillskjerm (Aktiviteter) ────────────────────────── -->
+  <div id="game-view" role="dialog" aria-modal="true" aria-labelledby="gv-title" hidden>
+    <div class="gv-frame">
+      <header class="gv-head">
+        <h2 id="gv-title">Mariusleken</h2>
+        <span id="gv-round" class="gv-round"></span>
+        <div class="gv-actions">
+          <button type="button" id="gv-scores" class="gv-btn">📊 Stillingen</button>
+          <button type="button" id="gv-finish" class="gv-btn">🏆 Avslutt</button>
+          <button type="button" id="gv-close" class="gv-btn" aria-label="Lukk spillet">✕</button>
+        </div>
+      </header>
+      <div id="gv-body" class="gv-body"></div>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
     integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="></script>
-  <script type="module" src="src/main.js?v=23"></script>
+  <script type="module" src="src/main.js?v=24"></script>
 </body>
 </html>

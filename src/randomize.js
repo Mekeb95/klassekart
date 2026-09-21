@@ -2,19 +2,11 @@
 
 import { state } from './state.js';
 import { areNeighbors } from './layout.js';
+import { shuffle } from './shuffle.js';
 
 // Fresh starting shuffles tried before settling for the best one found. Each
 // start is improved by swapping; restarts only matter when rules conflict.
 const RESTARTS = 30;
-
-export function shuffle(arr, rand = Math.random) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 /** Whether `rule` is broken when its two students sit at d1 and d2. */
 function breaksSeatRule(rule, d1, d2) {

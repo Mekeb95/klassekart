@@ -11,6 +11,7 @@ import {
 } from './state.js';
 import { cellToPos, deskWidth, spanOf } from './layout.js';
 import { renderGroupsAll } from './groups-view.js';
+import { renderActivitiesAll } from './activities-view.js';
 import { renderRuleList } from './rules-view.js';
 
 // Re-exported so callers keep importing every render function from one place.
@@ -53,19 +54,25 @@ export function updateDatalist() {
 
 /** Which tool is showing: body class, tab state and the main button's label. */
 export function syncModeUI() {
-  const groups = state.mode === 'groups';
-  document.body.classList.toggle('mode-groups', groups);
+  const mode = state.mode;
+  // One class per tool rather than a single «is groups» flag: each tool's
+  // panels are shown by `body.mode-x .x-only` in styles.css.
+  ['seating', 'groups', 'activities'].forEach(name => {
+    document.body.classList.toggle('mode-' + name, mode === name);
+  });
   document.querySelectorAll('[data-mode-tab]').forEach(tab => {
-    const on = tab.dataset.modeTab === state.mode;
+    const on = tab.dataset.modeTab === mode;
     tab.classList.toggle('active', on);
     tab.setAttribute('aria-selected', String(on));
   });
-  $('btn-randomize').textContent = groups ? '🎲 Trekk grupper' : '🔀 Randomiser';
+  $('btn-randomize').textContent = { groups: '🎲 Trekk grupper', activities: '🎲 Trekk lag' }[mode]
+    || '🔀 Randomiser';
 }
 
 export function updatePrintHeader() {
-  $('ph-class').textContent = state.mode === 'groups'
-    ? (state.className ? `${state.className} · Grupper` : 'Grupper')
+  const suffix = { groups: 'Grupper', activities: 'Mariusleken' }[state.mode];
+  $('ph-class').textContent = suffix
+    ? (state.className ? `${state.className} · ${suffix}` : suffix)
     : (state.className || 'Klassekart');
   $('ph-date').textContent  =
     new Date().toLocaleDateString('no-NO', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -169,11 +176,11 @@ export function updatePrintPageStyle() {
   // Allowlist-validated: these values land inside a stylesheet.
   const fmt = VALID_PRINT_FORMATS.has(state.printFormat)           ? state.printFormat      : 'A4';
   const ori = VALID_PRINT_ORIENTATIONS.has(state.printOrientation) ? state.printOrientation : 'landscape';
-  // A list of groups reads best upright; the chart's own paper settings are
-  // hidden in group mode, so they don't apply there.
-  const groups = state.mode === 'groups';
-  let css = `@media print { @page { size: ${groups ? 'A4 portrait' : `${fmt} ${ori}`}; margin: 10mm; } }`;
-  if (!groups && state.hideEmptyDesksOnPrint) {
+  // Group lists and answer sheets read best upright; the chart's own paper
+  // settings are hidden outside the chart, so they don't apply there either.
+  const upright = state.mode !== 'seating';
+  let css = `@media print { @page { size: ${upright ? 'A4 portrait' : `${fmt} ${ori}`}; margin: 10mm; } }`;
+  if (!upright && state.hideEmptyDesksOnPrint) {
     css += ' @media print { .desk-empty { visibility: hidden !important; } }';
   }
   style.textContent = css;
@@ -591,4 +598,5 @@ export function renderAll() {
   renderSavedLists();
   renderRuleList();
   renderGroupsAll();
+  renderActivitiesAll();
 }
