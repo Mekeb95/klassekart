@@ -434,8 +434,12 @@ function stopEarly() {
   timeUp();
 }
 
-/** Saves the round that was just scored and readies the next one. */
-function commitRound() {
+/**
+ * Saves the round that was just scored and readies the next one — either
+ * straight on to a fresh letter, or by way of the standings when the class is
+ * to see where that round left them.
+ */
+function commitRound({ showStandings }) {
   const m = game();
   if (m.rounds.length >= MAX_ROUNDS) { showToast(`Maks ${MAX_ROUNDS} runder`); return; }
   m.rounds.push({
@@ -447,7 +451,22 @@ function commitRound() {
   m.letter = null;
   m.marks  = emptyMarks(m.teams.length, m.categories.length);
   m.phase  = 'ready';
-  showBoard = true;   // the class wants to see where that round left them
+
+  showBoard = showStandings;
+  if (showStandings) renderGame();
+  else               newLetter();   // renders, with the next letter already up
+}
+
+/** From the standings on to the next round, with a fresh letter. */
+function nextRound() {
+  showBoard = false;
+  game().phase = 'ready';
+  newLetter();
+}
+
+/** Back out of the standings without touching the round in progress. */
+function closeStandings() {
+  showBoard = false;
   renderGame();
 }
 
@@ -617,9 +636,12 @@ function buildScoring() {
   const legend = el('p', 'gv-legend',
     'Trykk i rutene: 0 = tomt eller feil bokstav · 1 = flere hadde ordet · 2 = alene om ordet');
 
+  // «Neste runde» er hovedknappen: den er det læreren trykker på ni av ti
+  // ganger, og den sto før bare som «↩ Tilbake» i hjørnet av stillingen.
   const actions = el('div', 'gv-actions-row');
   actions.append(
-    button('gv-btn gv-btn-big gv-btn-go', '✓ Lagre runden', { gvAction: 'commit' }),
+    button('gv-btn gv-btn-big gv-btn-go', '▶ Neste runde', { gvAction: 'commitNext' }),
+    button('gv-btn', '📊 Lagre og se stillingen', { gvAction: 'commitBoard' }),
     button('gv-btn', '🎲 Kast runden', { gvAction: 'discard' })
   );
 
@@ -649,6 +671,17 @@ function buildStandings({ big }) {
     list.appendChild(li);
   });
   wrap.appendChild(list);
+
+  // Vises den i stor visning, er den et stopp underveis — da må veien videre
+  // stå her, ikke gjemt som «↩ Tilbake» oppe i hjørnet.
+  if (big) {
+    const actions = el('div', 'gv-actions-row gv-board-actions');
+    actions.append(m.letter
+      ? button('gv-btn gv-btn-big gv-btn-go', '↩ Tilbake til runden', { gvAction: 'closeBoard' })
+      : button('gv-btn gv-btn-big gv-btn-go', '▶ Neste runde', { gvAction: 'next' }));
+    actions.appendChild(button('gv-btn', '🏆 Avslutt spillet', { gvAction: 'finish' }));
+    wrap.appendChild(actions);
+  }
   return wrap;
 }
 
@@ -843,16 +876,20 @@ export function initActivities() {
     const action = e.target.closest('[data-gv-action]')?.dataset.gvAction;
     if (!action) return;
     ({
-      letter:  newLetter,
-      start:   startRound,
-      pause:   pauseRound,
-      resume:  resumeRound,
-      stop:    stopEarly,
-      commit:  commitRound,
-      discard: discardRound,
-      again:   playAgain,
-      copy:    copyResult,
-      new:     newGame
+      letter:      newLetter,
+      start:       startRound,
+      pause:       pauseRound,
+      resume:      resumeRound,
+      stop:        stopEarly,
+      commitNext:  () => commitRound({ showStandings: false }),
+      commitBoard: () => commitRound({ showStandings: true }),
+      next:        nextRound,
+      closeBoard:  closeStandings,
+      finish:      finishGame,
+      discard:     discardRound,
+      again:       playAgain,
+      copy:        copyResult,
+      new:         newGame
     })[action]?.();
     if (action === 'pause') renderGame();
   });

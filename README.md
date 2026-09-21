@@ -70,6 +70,9 @@ av appen, og åpner spillet i fullskjerm — klart for projektoren.
 - **Poeng** føres i et trykkrutenett rett på tavla: trykk i ruta til den viser riktig
   tall — 0 for tomt eller feil bokstav, 1 når flere lag hadde ordet, 2 når laget var
   alene om det
+- **▶ Neste runde** under poengrutenettet lagrer runden og trekker ny bokstav med
+  én gang. Vil du vise fremgangen for klassen først, tar **📊 Lagre og se stillingen**
+  deg til søylediagrammet — som også har «Neste runde» under seg
 - **Stillingen** vises som søylediagram mellom rundene, og **🏆 Avslutt** gir et
   podium med 1., 2. og 3. plass. Lag med like mange poeng deler plass
 - **🖨️ Skriv ut svarark** gir ett ark per lag med en ferdig tabell. Kategorikolonnene
