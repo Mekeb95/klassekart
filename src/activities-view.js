@@ -8,12 +8,14 @@ import {
 import { state, pushUndo, detectDuplicates } from './state.js';
 import { todayKey, presentStudents, groupSizes, describeSizes, drawGroups, absentToday } from './groups.js';
 import {
-  drawLetter, drawCategories, rerollCategory, emptyMarks, roundPoints, nextMark,
-  standings, podium, buildTeams, teamsFromGroups, formatClock, roundSeconds,
-  gameAsText, describeGame
+  drawLetter, drawCategories, rerollCategory, emptyMarks, emptyPenalties, roundPoints,
+  nextMark, nextPenalty, standings, podium, buildTeams, teamsFromGroups, formatClock,
+  roundSeconds, gameAsText, describeGame, letterPool
 } from './activities.js';
 import { showToast } from './toast.js';
 import { renderRuleList } from './rules-view.js';
+import { sfx, startMusic, stopMusic } from './game-audio.js';
+import { celebrate } from './celebrate.js';
 
 // Everything on screen for the aktivitetene: the activity picker, the setup
 // for Mariusleken, and the fullscreen game itself.
@@ -55,41 +57,13 @@ function button(className, text, dataset = {}) {
 const totalSeconds = m => roundSeconds(m.categories.length, m.seconds);
 
 // ── Lyd ──────────────────────────────────────────────────
-// Made with WebAudio rather than a sound file: no extra request, and nothing
-// for the Content-Security-Policy to allow. The context can only be created
-// after a click, which is exactly when the first sound is needed.
-let audio = null;
+// The sounds themselves live in game-audio.js; this only decides whether the
+// teacher wants them. Music needs both switches: «Lyd» off means silence.
+const beep = Object.fromEntries(Object.entries(sfx).map(([name, play]) =>
+  [name, (...args) => { if (game().sound) play(...args); }]));
+const musicOn = () => game().sound && game().music;
 
-function tone(freq, start, duration, peak = 0.22) {
-  if (!audio) return;
-  const osc  = audio.createOscillator();
-  const gain = audio.createGain();
-  osc.type            = 'sine';
-  osc.frequency.value = freq;
-  gain.gain.setValueAtTime(0.0001, audio.currentTime + start);
-  gain.gain.exponentialRampToValueAtTime(peak, audio.currentTime + start + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + start + duration);
-  osc.connect(gain).connect(audio.destination);
-  osc.start(audio.currentTime + start);
-  osc.stop(audio.currentTime + start + duration + 0.05);
-}
-
-function withAudio(fn) {
-  if (!game().sound) return;
-  try {
-    audio ||= new (window.AudioContext || window.webkitAudioContext)();
-    audio.resume?.();
-    fn();
-  } catch { /* no audio available — the countdown is visual anyway */ }
-}
-
-const beepTick  = () => withAudio(() => tone(880, 0, 0.09, 0.15));
-const beepStart = () => withAudio(() => { tone(660, 0, 0.1); tone(990, 0.1, 0.16); });
-const beepStop  = () => withAudio(() => {
-  tone(523, 0,    0.22);
-  tone(415, 0.22, 0.22);
-  tone(311, 0.44, 0.5);
-});
+const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 // ── Lag ──────────────────────────────────────────────────
 export function drawTeamsNow() {
@@ -154,6 +128,7 @@ function resetScores() {
   stopTimer();
   m.rounds      = [];
   m.marks       = emptyMarks(m.teams.length, m.categories.length);
+  m.penalties   = emptyPenalties(m.teams.length);
   m.letter      = null;
   m.usedLetters = [];
   m.remaining   = 0;
@@ -233,6 +208,9 @@ function renderPanel() {
   $('act-cat-num').textContent   = m.categories.length;
   $('act-seconds').value         = m.seconds;
   $('act-sound').checked         = m.sound;
+  $('act-music').checked         = m.music;
+  $('act-music').disabled        = !m.sound;
+  $('act-music-row').classList.toggle('opt-off', !m.sound);
   $('act-hard').checked          = m.hardLetters;
   $('act-sheet-cats').checked    = !!m.sheetCategories;
   $('act-round-time').textContent = formatClock(totalSeconds(m));
@@ -317,15 +295,18 @@ let gameOpen  = false;
 let showBoard = false;   // «📊 Stillingen» instead of the current phase
 let raf       = null;
 let deadline  = 0;       // performance.now() when the round ends
+let podiumStep = Infinity;  // how many podium places are showing; Infinity = all
 
 function openGame() {
   const m = game();
   if (m.teams.length < 2) { showToast('Trekk lag først'); return; }
   if (m.phase === 'setup') m.phase = 'ready';
   if (m.marks.length !== m.teams.length) m.marks = emptyMarks(m.teams.length, m.categories.length);
+  if (m.penalties.length !== m.teams.length) m.penalties = emptyPenalties(m.teams.length);
 
   gameOpen  = true;
   showBoard = false;
+  podiumStep = Infinity;   // coming back to a finished game shows the whole podium
   const view = $('game-view');
   view.hidden = false;
   document.body.classList.add('board-open');
@@ -342,6 +323,7 @@ function closeGame() {
   // left are kept, so reopening picks up where the class left off.
   if (game().phase === 'play') pauseRound();
   stopTimer();
+  stopShow();
   gameOpen = false;
   $('game-view').hidden = true;
   document.body.classList.remove('board-open');
@@ -350,16 +332,59 @@ function closeGame() {
 }
 
 // ── Runden ───────────────────────────────────────────────
+/** Whenever the clock stops, the music stops with it. */
 function stopTimer() {
   if (raf !== null) cancelAnimationFrame(raf);
   raf = null;
+  stopMusic();
 }
 
 function newLetter() {
   const m = game();
-  m.letter = drawLetter(m.usedLetters, m.hardLetters);
-  m.marks  = emptyMarks(m.teams.length, m.categories.length);
+  m.letter    = drawLetter(m.usedLetters, m.hardLetters);
+  m.marks     = emptyMarks(m.teams.length, m.categories.length);
+  m.penalties = emptyPenalties(m.teams.length);
   renderGame();
+  rollLetter(m.letter);
+}
+
+// ── Bokstavhjulet ────────────────────────────────────────
+// The new letter spins in like a fruit machine: fast at first, slowing down,
+// then a pop as it lands. Purely for show — the letter is already decided, so
+// pressing Start (or anything that redraws the screen) simply cuts it short.
+let rollTimer = null;
+
+function stopRoll() {
+  clearTimeout(rollTimer);
+  rollTimer = null;
+}
+
+function rollLetter(final) {
+  stopRoll();
+  const box = document.querySelector('#gv-body .gv-letterbox .gv-letter');
+  if (!box || reducedMotion()) return;
+
+  const pool  = letterPool(game().hardLetters).filter(l => l !== final);
+  const delays = [];
+  for (let d = 35; d < 190; d *= 1.17) delays.push(d);
+
+  box.classList.add('gv-letter-rolling');
+  let i = 0;
+  const spin = () => {
+    if (i < delays.length) {
+      box.textContent = pool[Math.floor(Math.random() * pool.length)];
+      beep.roll();
+      rollTimer = setTimeout(spin, delays[i++]);
+      return;
+    }
+    rollTimer = null;
+    box.textContent = final;
+    box.classList.remove('gv-letter-rolling');
+    box.classList.add('gv-letter-land');
+    beep.land();
+  };
+  box.textContent = pool[0];
+  spin();
 }
 
 function startRound() {
@@ -369,7 +394,7 @@ function startRound() {
   m.paused    = false;
   m.phase     = 'play';
   deadline    = performance.now() + m.remaining * 1000;
-  beepStart();
+  beep.start();
   renderGame();
   tick();
 }
@@ -389,10 +414,13 @@ function pauseRound() {
   m.remaining = Math.max(0, (deadline - performance.now()) / 1000);
 }
 
+const secondsLeft = () => Math.max(0, (deadline - performance.now()) / 1000);
+
 function tick() {
   stopTimer();
   const m = game();
   let shown = Math.ceil(m.remaining);
+  if (musicOn()) startMusic(secondsLeft);
 
   const step = () => {
     const left = Math.max(0, (deadline - performance.now()) / 1000);
@@ -402,7 +430,7 @@ function tick() {
     const whole = Math.ceil(left);
     if (whole !== shown) {
       shown = whole;
-      if (whole > 0 && whole <= 3) beepTick();
+      if (whole > 0 && whole <= 3) beep.tick();
     }
     if (left <= 0) { stopTimer(); timeUp(); return; }
     raf = requestAnimationFrame(step);
@@ -417,7 +445,21 @@ function paintClock(left) {
   clock.textContent = formatClock(left);
   clock.classList.toggle('gv-clock-low', left <= 10);
   const ring = $('gv-ring');
-  if (ring) ring.style.setProperty('--gv-progress', (left / totalSeconds(game())).toFixed(4));
+  if (!ring) return;
+  ring.style.setProperty('--gv-progress', (left / totalSeconds(game())).toFixed(4));
+  ring.classList.toggle('gv-ring-low', left <= 10);
+  ring.classList.toggle('gv-ring-final', left > 0 && left <= 3);
+}
+
+/** «🎵 Musikk» on the play screen — mutes or restarts the music on the spot. */
+function toggleMusic() {
+  const m = game();
+  m.music = !m.music;
+  if (m.music && !m.sound) m.sound = true;   // asking for music means wanting sound
+  if (musicOn() && m.phase === 'play' && !m.paused) startMusic(secondsLeft);
+  else stopMusic();
+  renderPanel();
+  renderGame();
 }
 
 function timeUp() {
@@ -425,7 +467,8 @@ function timeUp() {
   m.remaining = 0;
   m.paused    = false;
   m.phase     = 'score';
-  beepStop();
+  stopMusic();
+  beep.stop();
   renderGame();
 }
 
@@ -445,12 +488,14 @@ function commitRound({ showStandings }) {
   m.rounds.push({
     letter:     m.letter,
     categories: [...m.categories],
-    marks:      m.marks.map(row => [...row])
+    marks:      m.marks.map(row => [...row]),
+    penalties:  [...m.penalties]
   });
   if (m.letter && !m.usedLetters.includes(m.letter)) m.usedLetters.push(m.letter);
-  m.letter = null;
-  m.marks  = emptyMarks(m.teams.length, m.categories.length);
-  m.phase  = 'ready';
+  m.letter    = null;
+  m.marks     = emptyMarks(m.teams.length, m.categories.length);
+  m.penalties = emptyPenalties(m.teams.length);
+  m.phase     = 'ready';
 
   showBoard = showStandings;
   if (showStandings) renderGame();
@@ -476,23 +521,64 @@ function finishGame() {
   stopTimer();
   m.phase   = 'done';
   showBoard = false;
+  podiumStep = 0;
   renderGame();
+  revealPodium();
 }
 
 function newGame() {
   if (game().rounds.length > 0 && !confirm('Starte et nytt spill? Poengene nullstilles.')) return;
+  stopShow();
   resetScores();
   showBoard = false;
   renderGame();
   renderActivitiesAll();
 }
 
-function toggleMark(teamIndex, catIndex) {
+/**
+ * Scoring taps change just the cell and the team's sum in place — redrawing
+ * the whole grid would reset the little pop each tap gets.
+ */
+function toggleMark(teamIndex, catIndex, cell) {
   const m   = game();
   const row = m.marks[teamIndex];
   if (!row || row[catIndex] === undefined) return;
-  row[catIndex] = nextMark(row[catIndex]);
-  renderGame();
+  const value = row[catIndex] = nextMark(row[catIndex]);
+  paintCell(cell, 'gv-mark gv-mark-' + value, String(value),
+    `${m.teams[teamIndex].name}, ${m.categories[catIndex]}: ${value} poeng`);
+  paintSum(teamIndex);
+  beep.mark(value);
+}
+
+function togglePenalty(teamIndex, cell) {
+  const m = game();
+  if (m.penalties[teamIndex] === undefined) return;
+  const value = m.penalties[teamIndex] = nextPenalty(m.penalties[teamIndex]);
+  paintCell(cell, 'gv-pen' + (value > 0 ? ' gv-pen-on' : ''), penaltyLabel(value),
+    `${m.teams[teamIndex].name}: ${value > 0 ? `${value} i trekk` : 'ingen trekk'}`);
+  paintSum(teamIndex);
+  if (value > 0) beep.penalty();
+}
+
+const penaltyLabel = n => (n > 0 ? `−${n}` : '–');
+
+function paintCell(cell, className, text, label) {
+  cell.className   = className;
+  cell.textContent = text;
+  cell.setAttribute('aria-label', label);
+  // Restart the pop: drop the class, force a reflow, add it back.
+  cell.classList.remove('gv-pop');
+  void cell.offsetWidth;
+  cell.classList.add('gv-pop');
+}
+
+function paintSum(teamIndex) {
+  const m   = game();
+  const sum = document.querySelector(`#gv-body [data-gv-sum="${teamIndex}"]`);
+  if (!sum) return;
+  const points = roundPoints(m.marks, teamIndex, m.penalties);
+  sum.textContent = String(points);
+  sum.classList.toggle('gv-grid-sum-neg', points < 0);
 }
 
 async function copyResult() {
@@ -514,6 +600,7 @@ function renderGame() {
   if (!gameOpen) return;
   const m    = game();
   const body = $('gv-body');
+  stopRoll();
   body.textContent = '';
   body.className   = 'gv-body gv-phase-' + (showBoard ? 'board' : m.phase);
 
@@ -585,9 +672,12 @@ function buildPlay() {
   right.append(ring);
 
   const actions = el('div', 'gv-actions-row');
+  const music = button('gv-btn gv-btn-music', musicOn() ? '🎵 Musikk på' : '🔇 Musikk av', { gvAction: 'music' });
+  music.setAttribute('aria-pressed', String(musicOn()));
   actions.append(
     button('gv-btn', m.paused ? '▶ Fortsett' : '⏸ Pause', { gvAction: m.paused ? 'resume' : 'pause' }),
-    button('gv-btn', '⏹ Stopp nå', { gvAction: 'stop' })
+    button('gv-btn', '⏹ Stopp nå', { gvAction: 'stop' }),
+    music
   );
 
   const top = el('div', 'gv-play-top');
@@ -612,6 +702,7 @@ function buildScoring() {
   const hrow  = el('tr');
   hrow.appendChild(el('th', 'gv-grid-team', 'Lag'));
   m.categories.forEach(cat => hrow.appendChild(el('th', '', cat)));
+  hrow.appendChild(el('th', 'gv-grid-pen', 'Trekk'));
   hrow.appendChild(el('th', 'gv-grid-sum', 'Sum'));
   thead.appendChild(hrow);
 
@@ -628,13 +719,24 @@ function buildScoring() {
       td.appendChild(cell);
       tr.appendChild(td);
     });
-    tr.appendChild(el('td', 'gv-grid-sum', String(roundPoints(m.marks, ti))));
+    const pen   = m.penalties[ti] || 0;
+    const penTd = el('td', 'gv-grid-pen');
+    const penBtn = button('gv-pen' + (pen > 0 ? ' gv-pen-on' : ''), penaltyLabel(pen), { gvPen: ti });
+    penBtn.setAttribute('aria-label', `${team.name}: ${pen > 0 ? `${pen} i trekk` : 'ingen trekk'}`);
+    penBtn.title = 'Trekk ett poeng (juks o.l.) — trykk flere ganger for mer';
+    penTd.appendChild(penBtn);
+    tr.appendChild(penTd);
+
+    const points = roundPoints(m.marks, ti, m.penalties);
+    const sum = el('td', 'gv-grid-sum' + (points < 0 ? ' gv-grid-sum-neg' : ''), String(points));
+    sum.dataset.gvSum = ti;
+    tr.appendChild(sum);
     tbody.appendChild(tr);
   });
   table.append(thead, tbody);
 
   const legend = el('p', 'gv-legend',
-    'Trykk i rutene: 0 = tomt eller feil bokstav · 1 = flere hadde ordet · 2 = alene om ordet');
+    'Trykk i rutene: 0 = tomt eller feil bokstav · 1 = flere hadde ordet · 2 = alene om ordet · Trekk = −1 per trykk (juks o.l.)');
 
   // «Neste runde» er hovedknappen: den er det læreren trykker på ni av ti
   // ganger, og den sto før bare som «↩ Tilbake» i hjørnet av stillingen.
@@ -653,6 +755,7 @@ function buildStandings({ big }) {
   const m    = game();
   const rows = standings(m.teams, m.rounds);
   const top  = Math.max(1, ...rows.map(r => r.points));
+  let order  = 0;
   const wrap = el('div', big ? 'gv-board gv-board-big' : 'gv-board');
 
   wrap.appendChild(el('h3', 'gv-board-title', big ? 'Stillingen' : `Stillingen etter ${plural(m.rounds.length, 'runde', 'runder')}`));
@@ -661,7 +764,8 @@ function buildStandings({ big }) {
   rows.forEach(row => {
     const li = el('li', 'gv-bar-row');
     li.style.setProperty('--team-color', teamColor(row.index));
-    li.style.setProperty('--gv-fill', (row.points / top).toFixed(4));
+    li.style.setProperty('--gv-fill', (Math.max(0, row.points) / top).toFixed(4));
+    li.style.setProperty('--gv-i', order++);
     li.append(
       el('span', 'gv-bar-place', row.place + '.'),
       el('span', 'gv-bar-name', row.name),
@@ -685,26 +789,48 @@ function buildStandings({ big }) {
   return wrap;
 }
 
+/** The podium places that actually have someone on them, in reveal order. */
+function podiumPlaces() {
+  const top = podium(standings(game().teams, game().rounds));
+  return [3, 2, 1].filter(place => top.some(r => r.place === place));
+}
+
 function buildPodium() {
-  const m    = game();
-  const rows = standings(m.teams, m.rounds);
-  const top  = podium(rows);
-  const wrap = el('div', 'gv-podium-wrap');
+  const m      = game();
+  const rows   = standings(m.teams, m.rounds);
+  const top    = podium(rows);
+  const order  = podiumPlaces();
+  const done   = podiumStep >= order.length;
+  const wrap   = el('div', 'gv-podium-wrap' + (done ? ' is-done' : ''));
 
   wrap.appendChild(el('h3', 'gv-podium-title', '🏆 Resultat'));
+  const caption = el('p', 'gv-podium-caption', done ? winnerLine(top) : '');
+  caption.id = 'gv-podium-caption';
+  wrap.appendChild(caption);
 
   // Second place to the left, first in the middle, third to the right — the
   // shape everyone recognises. Shared places simply queue up in the same slot.
+  // Every column is laid out from the start and only made visible when its
+  // turn comes, so nothing jumps about while the places are revealed.
   const stage = el('div', 'gv-podium');
   [2, 1, 3].forEach(place => {
     const winners = top.filter(r => r.place === place);
-    if (winners.length === 0) return;
-    const col = el('div', 'gv-podium-col gv-podium-' + place);
+    if (winners.length === 0) {
+      // Shared places can leave a step empty (two teams on 2. → no 3.). The
+      // step still stands, so the winner stays in the middle.
+      const empty = el('div', `gv-podium-col gv-podium-${place} gv-podium-empty is-shown`);
+      empty.appendChild(el('div', 'gv-podium-block'));
+      stage.appendChild(empty);
+      return;
+    }
+    const shown = order.indexOf(place) < podiumStep;
+    const col   = el('div', `gv-podium-col gv-podium-${place}${shown ? ' is-shown' : ''}`);
+    col.dataset.place = place;
     const names = el('div', 'gv-podium-names');
     winners.forEach(w => {
       const item = el('div', 'gv-podium-name');
       item.style.setProperty('--team-color', teamColor(w.index));
-      item.append(el('span', 'gv-podium-team', w.name), el('span', 'gv-podium-points', `${w.points} poeng`));
+      item.append(el('span', 'gv-podium-team', w.name), el('span', 'gv-podium-points', plural(w.points, 'poeng', 'poeng')));
       names.appendChild(item);
     });
     const block = el('div', 'gv-podium-block');
@@ -715,14 +841,15 @@ function buildPodium() {
   });
   wrap.appendChild(stage);
 
+  const after = el('div', 'gv-podium-after');
   const rest = rows.filter(r => r.place > 3);
   if (rest.length > 0) {
     const list = el('ul', 'gv-rest');
     rest.forEach(r => list.appendChild(el('li', '', `${r.place}. ${r.name} — ${plural(r.points, 'poeng', 'poeng')}`)));
-    wrap.appendChild(list);
+    after.appendChild(list);
   }
 
-  wrap.appendChild(el('p', 'gv-sub', `${plural(m.rounds.length, 'runde', 'runder')} spilt · bokstavene ${m.usedLetters.join(', ')}`));
+  after.appendChild(el('p', 'gv-sub', `${plural(m.rounds.length, 'runde', 'runder')} spilt · bokstavene ${m.usedLetters.join(', ')}`));
 
   const actions = el('div', 'gv-actions-row');
   actions.append(
@@ -730,8 +857,111 @@ function buildPodium() {
     button('gv-btn', '📋 Kopier resultatet', { gvAction: 'copy' }),
     button('gv-btn', '🔄 Nytt spill', { gvAction: 'new' })
   );
-  wrap.appendChild(actions);
+  after.appendChild(actions);
+  wrap.appendChild(after);
+
+  if (!done) wrap.appendChild(el('p', 'gv-skip', 'Trykk hvor som helst for å hoppe over'));
   return wrap;
+}
+
+function winnerLine(top) {
+  const names = top.filter(r => r.place === 1).map(r => r.name);
+  if (names.length === 0) return '';
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} og ${names.at(-1)}`;
+  return `Gratulerer, ${list}! 🎉`;
+}
+
+// ── Avsløringen ──────────────────────────────────────────
+// 3. plass → 2. plass → trommevirvel → 1. plass med raketter og konfetti.
+// It runs on its own; the teacher only has to wait (or tap to skip).
+const REVEAL = { first: 900, between: 2200, drumroll: 2400 };
+let showTimers = [];
+let stopFx     = null;
+
+function later(ms, fn) { showTimers.push(setTimeout(fn, ms)); }
+
+/** Stops the reveal and the fireworks — leaving the podium, closing the game. */
+function stopShow() {
+  showTimers.forEach(clearTimeout);
+  showTimers = [];
+  stopFx?.();
+  stopFx = null;
+}
+
+function caption(text) {
+  const c = $('gv-podium-caption');
+  if (!c) return;
+  c.textContent = text;
+  c.classList.remove('gv-pop');
+  void c.offsetWidth;
+  c.classList.add('gv-pop');
+}
+
+function showPlace(place) {
+  document.querySelector(`#gv-body .gv-podium-col[data-place="${place}"]`)?.classList.add('is-shown');
+}
+
+function revealPodium() {
+  stopShow();
+  const order = podiumPlaces();
+  if (reducedMotion()) { podiumStep = Infinity; renderGame(); return; }
+
+  let at = REVEAL.first;
+  order.forEach((place, i) => {
+    if (place === 1) {
+      // Only build up the drumroll when there was someone before the winner.
+      if (i > 0) {
+        later(at, () => { caption('Og vinneren er …'); beep.drumroll(REVEAL.drumroll / 1000); });
+        at += REVEAL.drumroll;
+      }
+      later(at, () => {
+        podiumStep = i + 1;
+        showPlace(1);
+        beep.fanfare();
+        crowning();
+      });
+      at += 1600;
+    } else {
+      later(at, () => {
+        podiumStep = i + 1;
+        caption(`${place}. plass …`);
+        showPlace(place);
+        beep.place(place);
+      });
+      at += REVEAL.between;
+    }
+  });
+  later(at, finishReveal);
+}
+
+/** The winner's moment: caption, confetti, rockets. */
+function crowning() {
+  const m   = game();
+  const top = podium(standings(m.teams, m.rounds));
+  caption(winnerLine(top));
+  const host = document.querySelector('#game-view .gv-frame');
+  if (!host) return;
+  stopFx?.();
+  stopFx = celebrate(host, {
+    colors:   top.filter(r => r.place === 1).map(r => teamColor(r.index)),
+    onRocket: kind => (kind === 'bang' ? beep.bang() : beep.whistle())
+  });
+}
+
+function finishReveal() {
+  podiumStep = Infinity;
+  document.querySelector('#gv-body .gv-podium-wrap')?.classList.add('is-done');
+  document.querySelector('#gv-body .gv-skip')?.remove();
+}
+
+/** Tap or Space mid-reveal: everything at once, still with the fireworks. */
+function skipPodium() {
+  const wasCrowned = podiumStep >= podiumPlaces().length;
+  showTimers.forEach(clearTimeout);
+  showTimers = [];
+  podiumPlaces().forEach(showPlace);
+  if (!wasCrowned) { beep.fanfare(); crowning(); }
+  finishReveal();
 }
 
 // ── Svarark ──────────────────────────────────────────────
@@ -847,7 +1077,8 @@ export function initActivities() {
     game().seconds = SECONDS_CHOICES.includes(secs) ? secs : 30;
     renderActivitiesAll();
   });
-  $('act-sound').addEventListener('change', e => { game().sound = e.target.checked; });
+  $('act-sound').addEventListener('change', e => { game().sound = e.target.checked; renderPanel(); });
+  $('act-music').addEventListener('change', e => { game().music = e.target.checked; });
   $('act-hard').addEventListener('change', e => { game().hardLetters = e.target.checked; });
   $('act-hard-info').addEventListener('click', e => {
     const tip = $('act-hard-tip');
@@ -870,7 +1101,14 @@ export function initActivities() {
     const mark = e.target.closest('[data-gv-mark]');
     if (mark) {
       const [ti, ci] = mark.dataset.gvMark.split(',').map(Number);
-      toggleMark(ti, ci);
+      toggleMark(ti, ci, mark);
+      return;
+    }
+    const pen = e.target.closest('[data-gv-pen]');
+    if (pen) { togglePenalty(+pen.dataset.gvPen, pen); return; }
+    // A tap on the podium while it is being revealed skips to the end.
+    if (podiumStep < Infinity && e.target.closest('.gv-podium-wrap') && !e.target.closest('button')) {
+      skipPodium();
       return;
     }
     const action = e.target.closest('[data-gv-action]')?.dataset.gvAction;
@@ -889,7 +1127,8 @@ export function initActivities() {
       discard:     discardRound,
       again:       playAgain,
       copy:        copyResult,
-      new:         newGame
+      new:         newGame,
+      music:       toggleMusic
     })[action]?.();
     if (action === 'pause') renderGame();
   });
@@ -906,7 +1145,9 @@ export function initActivities() {
     if (e.code === 'Space' && !e.target.closest('input, textarea')) {
       e.preventDefault();
       const m = game();
-      if (m.phase === 'ready') startRound();
+      if (m.phase === 'done' && podiumStep < Infinity) skipPodium();
+      else if (showBoard) return;
+      else if (m.phase === 'ready') startRound();
       else if (m.phase === 'play' && m.paused) resumeRound();
       else if (m.phase === 'play') { pauseRound(); renderGame(); }
     }
@@ -926,15 +1167,17 @@ function nudgeTeamSize(delta) {
 /** Throws away the round that was just played, letter and all. */
 function discardRound() {
   const m = game();
-  m.marks  = emptyMarks(m.teams.length, m.categories.length);
-  m.letter = null;
-  m.phase  = 'ready';
+  m.marks     = emptyMarks(m.teams.length, m.categories.length);
+  m.penalties = emptyPenalties(m.teams.length);
+  m.letter    = null;
+  m.phase     = 'ready';
   renderGame();
   showToast('Runden ble ikke telt');
 }
 
 function playAgain() {
   const m = game();
+  stopShow();
   m.phase   = 'ready';
   showBoard = false;
   renderGame();

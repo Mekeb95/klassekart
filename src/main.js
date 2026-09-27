@@ -22,7 +22,7 @@ import {
   saveSession, restoreSession
 } from './storage.js';
 import { initUI, undo, newClass, pasteFromClipboard, hideContextMenu } from './ui.js';
-import { showToast } from './toast.js';
+import { showToast, hideToast } from './toast.js';
 
 const $ = id => document.getElementById(id);
 
@@ -132,6 +132,7 @@ function setupEventListeners() {
       if (state.mode === tab.dataset.modeTab) return;
       if (getMoveMode()) exitMoveMode();
       hideContextMenu();
+      hideToast();
       state.mode = tab.dataset.modeTab;
       renderAll();
     });

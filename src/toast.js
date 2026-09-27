@@ -17,3 +17,9 @@ export function showToast(msg) {
   clearTimeout(timer);
   timer = setTimeout(() => toast.classList.remove('show'), 2400);
 }
+
+/** Clears a toast that belongs to the screen being left (switching tabs). */
+export function hideToast() {
+  clearTimeout(timer);
+  document.getElementById('toast')?.classList.remove('show');
+}

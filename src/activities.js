@@ -3,7 +3,7 @@
 import { shuffle } from './shuffle.js';
 import {
   CATEGORY_BANK, CLASSIC_CATEGORIES, EASY_LETTERS, HARD_LETTERS,
-  MAX_CATEGORIES, MAX_CAT_LENGTH, MAX_POINTS
+  MAX_CATEGORIES, MAX_CAT_LENGTH, MAX_POINTS, MAX_PENALTY
 } from './constants.js';
 
 // Pure logic for aktivitetene: letters, categories, scoring and standings.
@@ -69,22 +69,36 @@ export function normalizeCategories(list) {
 // ── Poeng ────────────────────────────────────────────────
 // marks[team][category] is 0, 1 or 2 — nothing/wrong letter, a word someone
 // else had too, or a word the team was alone about.
+//
+// penalties[team] is how many points the teacher took off that team this
+// round (juks, bråk). It is kept apart from the marks so the grid still shows
+// what the team actually wrote. Rounds saved before trekk existed have no
+// penalties at all, which counts as none.
 export function emptyMarks(teamCount, categoryCount) {
   return Array.from({ length: teamCount }, () => new Array(categoryCount).fill(0));
 }
 
-export function roundPoints(marks, teamIndex) {
-  return (marks[teamIndex] || []).reduce((sum, p) => sum + (Number(p) || 0), 0);
+export const emptyPenalties = teamCount => new Array(teamCount).fill(0);
+
+export function roundPoints(marks, teamIndex, penalties = []) {
+  const earned = (marks[teamIndex] || []).reduce((sum, p) => sum + (Number(p) || 0), 0);
+  return earned - (Number(penalties?.[teamIndex]) || 0);
 }
 
 export function totalPoints(rounds, teamIndex) {
-  return rounds.reduce((sum, r) => sum + roundPoints(r.marks, teamIndex), 0);
+  return rounds.reduce((sum, r) => sum + roundPoints(r.marks, teamIndex, r.penalties), 0);
 }
 
 /** Cycles a cell 0 → 1 → 2 → 0, which is how the teacher taps through scoring. */
 export function nextMark(value) {
   const n = Number(value) || 0;
   return n >= MAX_POINTS ? 0 : n + 1;
+}
+
+/** Same tap-through for trekk: 0 → 1 → … → MAX_PENALTY → 0. */
+export function nextPenalty(value) {
+  const n = Number(value) || 0;
+  return n >= MAX_PENALTY ? 0 : n + 1;
 }
 
 /**
@@ -158,7 +172,11 @@ export function gameAsText(teams, rounds, { title, dateLabel }) {
   const rows  = standings(teams, rounds);
   const lines = [`${title} – Mariusleken${dateLabel ? ` (${dateLabel})` : ''}`, ''];
   rounds.forEach((r, i) => {
-    lines.push(`Runde ${i + 1} — bokstav ${r.letter}: ${r.categories.join(', ')}`);
+    const docked = teams
+      .map((t, ti) => (r.penalties?.[ti] > 0 ? `${t.name} −${r.penalties[ti]}` : null))
+      .filter(Boolean);
+    lines.push(`Runde ${i + 1} — bokstav ${r.letter}: ${r.categories.join(', ')}`
+      + (docked.length > 0 ? ` (trekk: ${docked.join(', ')})` : ''));
   });
   if (rounds.length > 0) lines.push('');
   lines.push('Stilling:');

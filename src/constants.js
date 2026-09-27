@@ -86,6 +86,7 @@ export const MAX_CATEGORIES  = 8;
 export const MAX_CAT_LENGTH  = 30;
 export const MAX_ROUNDS      = 40;
 export const MAX_POINTS      = 2;  // per kategori: 0 = tomt/feil, 1 = flere hadde det, 2 = alene
+export const MAX_PENALTY     = 5;  // trekk per lag per runde (juks, bråk o.l.)
 export const SECONDS_CHOICES = [15, 20, 30, 45, 60];
 export const DEFAULT_SECONDS = 30;
 export const ROUNDS_ON_SHEET = 8;  // rader på det utskrevne svararket

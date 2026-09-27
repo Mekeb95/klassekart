@@ -62,19 +62,27 @@ av appen, og åpner spillet i fullskjerm — klart for projektoren.
   «🤝 sammen» gir samme lag), og fravær fra Grupper-fanen tas hensyn til.
   Ferdige grupper kan også hentes rett inn med **👥 Hent fra Grupper**.
   Lagnavnene kan skrives om
-- **Bokstaven** trekkes tilfeldig og gjentas ikke før alle er brukt. C, Q, W, X, Y,
-  Z og Æ er utelatt til du slår på «vanskelige bokstaver»
+- **Bokstaven** trekkes tilfeldig og gjentas ikke før alle er brukt, og ruller inn som
+  på en spilleautomat. C, Q, W, X, Y, Z og Æ er utelatt til du slår på «vanskelige bokstaver»
 - **Timeren** gir 30 sekunder per kategori som standard (15–60 kan velges), vises som
   en stor nedtellingsring, teller ned med lyd de siste sekundene og markerer stopp
-  tydelig på tavla. **Mellomrom** starter og pauser runden
+  tydelig på tavla. **Mellomrom** starter og pauser runden. De siste 10 sekundene blir
+  ringen oransje
+- **Ventemusikk** spilles mens timeren går — en egen liten quiz-loop laget i nettleseren
+  (ingen lydfiler), som øker tempoet de siste 10 sekundene. Egen bryter i sidepanelet
+  og en «🎵 Musikk»-knapp under runden
 - **Poeng** føres i et trykkrutenett rett på tavla: trykk i ruta til den viser riktig
   tall — 0 for tomt eller feil bokstav, 1 når flere lag hadde ordet, 2 når laget var
   alene om det
+- **Trekk**: en egen kolonne i poengrutenettet gir −1 per trykk (opptil −5) for juks,
+  bråk o.l. Trekket vises for klassen og lagres med runden
 - **▶ Neste runde** under poengrutenettet lagrer runden og trekker ny bokstav med
   én gang. Vil du vise fremgangen for klassen først, tar **📊 Lagre og se stillingen**
   deg til søylediagrammet — som også har «Neste runde» under seg
-- **Stillingen** vises som søylediagram mellom rundene, og **🏆 Avslutt** gir et
-  podium med 1., 2. og 3. plass. Lag med like mange poeng deler plass
+- **Stillingen** vises som søylediagram mellom rundene, og **🏆 Avslutt** avslører
+  pallen av seg selv: 3. plass, 2. plass, trommevirvel — og vinneren med fanfare,
+  raketter og konfetti. Trykk (eller mellomrom) hopper rett til slutten. Lag med like
+  mange poeng deler plass
 - **🖨️ Skriv ut svarark** gir ett ark per lag med en ferdig tabell. Kategorikolonnene
   er blanke som standard, så arkene kan skrives ut på forhånd og fylles ut av elevene
   når kategoriene er trukket
@@ -137,6 +145,8 @@ filene serveres som de er.
 | `groups-view.js` | Gruppefanen: innstillinger, gruppekort, dra-og-slipp, tavlemodus |
 | `activities.js` | Ren spillogikk: bokstaver, kategorier, poeng, stilling, podium |
 | `activities-view.js` | Aktivitetsfanen: oppsett, fullskjermsspillet, poengføring, svarark |
+| `game-audio.js` | All lyd i spillet (WebAudio): pip, ventemusikk og fanfare |
+| `celebrate.js` | Raketter og konfetti på et canvas over spillskjermen |
 | `rules-view.js` | Regellisten, med live markering av brutte regler i alle faner |
 | `render.js` | DOM-tegning for klassekartet, regellisten og fanebytte |
 | `desks.js` | Operasjoner på pulter, rader/kolonner og lærerpult |

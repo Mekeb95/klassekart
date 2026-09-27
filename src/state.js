@@ -5,7 +5,7 @@ import {
   MIN_TEXT_SCALE, MAX_TEXT_SCALE, MAX_RULES,
   MIN_GROUP_SIZE, MAX_GROUP_SIZE, MIN_GROUP_COUNT, MAX_GROUP_COUNT,
   MAX_GROUP_HISTORY, MAX_ROLES, MAX_ROLE_LENGTH,
-  MIN_TEAM_SIZE, MAX_TEAM_SIZE, MAX_TEAMS, MAX_TEAM_NAME, MAX_ROUNDS, MAX_POINTS,
+  MIN_TEAM_SIZE, MAX_TEAM_SIZE, MAX_TEAMS, MAX_TEAM_NAME, MAX_ROUNDS, MAX_POINTS, MAX_PENALTY,
   DEFAULT_SECONDS, SECONDS_CHOICES, CLASSIC_CATEGORIES,
   VALID_PRINT_FORMATS, VALID_PRINT_ORIENTATIONS, VALID_BB_POSITIONS, VALID_GROUP_SIZES,
   VALID_MODES, VALID_RULE_TYPES, VALID_GROUP_SIZE_MODES, VALID_ACTIVITIES, VALID_GAME_PHASES
@@ -72,6 +72,7 @@ export function createInitialMariusleken() {
     categories:  [...CLASSIC_CATEGORIES],
     seconds:     DEFAULT_SECONDS,          // per kategori
     sound:       true,
+    music:       true,                     // ventemusikk mens timeren går
     hardLetters: false,
     sheetCategories: false,                // skriv kategoriene på det utskrevne svararket
     phase:       'setup',                  // setup | ready | play | score | done
@@ -80,7 +81,8 @@ export function createInitialMariusleken() {
     remaining:   0,                        // sekunder igjen av runden
     paused:      false,
     marks:       [],                       // marks[lag][kategori] = 0 | 1 | 2
-    rounds:      []                        // [{letter, categories, marks}] — ferdige runder
+    penalties:   [],                       // penalties[lag] = trekk denne runden
+    rounds:      []                        // [{letter, categories, marks, penalties}] — ferdige runder
   };
 }
 
@@ -312,6 +314,12 @@ function asMarks(value, teamCount, categoryCount) {
   });
 }
 
+/** penalties[team], each clamped to 0…MAX_PENALTY. Missing (older saves) = no trekk. */
+function asPenalties(value, teamCount) {
+  const list = Array.isArray(value) ? value : [];
+  return Array.from({ length: teamCount }, (_, t) => clampInt(list[t], 0, MAX_PENALTY, 0));
+}
+
 function sanitizeMariusleken(m) {
   const next = createInitialMariusleken();
   if (!m || typeof m !== 'object') return next;
@@ -319,6 +327,7 @@ function sanitizeMariusleken(m) {
   next.teamSize        = clampInt(m.teamSize, MIN_TEAM_SIZE, MAX_TEAM_SIZE, 4);
   next.seconds         = pick(clampInt(m.seconds, 5, 300, DEFAULT_SECONDS), new Set(SECONDS_CHOICES), DEFAULT_SECONDS);
   next.sound           = m.sound !== false;
+  next.music           = m.music !== false;
   next.hardLetters     = m.hardLetters === true;
   next.sheetCategories = m.sheetCategories === true;
 
@@ -359,13 +368,19 @@ function sanitizeMariusleken(m) {
       .slice(0, MAX_ROUNDS)
       .map(r => {
         const cats = normalizeCategories(r.categories);
-        return { letter: asLetter(r.letter), categories: cats, marks: asMarks(r.marks, teamCount, cats.length) };
+        return {
+          letter:     asLetter(r.letter),
+          categories: cats,
+          marks:      asMarks(r.marks, teamCount, cats.length),
+          penalties:  asPenalties(r.penalties, teamCount)
+        };
       })
       .filter(r => r.categories.length > 0);
   }
 
   next.letter = asLetter(m.letter);
-  next.marks  = asMarks(m.marks, teamCount, next.categories.length);
+  next.marks     = asMarks(m.marks, teamCount, next.categories.length);
+  next.penalties = asPenalties(m.penalties, teamCount);
 
   // A countdown can't keep running while the tab is gone, so a round that was
   // in progress comes back paused with the time it had left — not restarted.
